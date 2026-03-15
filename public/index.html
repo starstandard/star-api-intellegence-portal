@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>STAR Automotive API Intelligence</title>
+<style>
+body{font-family:Arial;background:#0b1220;color:white;margin:0}
+header{padding:20px;background:#121c3a}
+h1{margin:0;color:#7aa2ff}
+.container{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 80px)}
+.sidebar{background:#0f1832;padding:20px;overflow:auto}
+.main{padding:20px}
+button{width:100%;padding:12px;margin:6px 0;background:#1d2c57;color:white;border:none;border-radius:8px;cursor:pointer}
+textarea{width:100%;height:120px;background:#0f1832;color:white;border:1px solid #2e3f7a;border-radius:10px;padding:10px}
+.response{margin-top:20px;background:#0f1832;padding:15px;border-radius:10px;white-space:pre-wrap}
+.copy{margin-top:10px;background:#243a7a}
+</style>
+</head>
+<body>
+
+<header>
+<h1>STAR Automotive API Intelligence Portal</h1>
+<div>Explore STAR automotive APIs using AI</div>
+</header>
+
+<div class="container">
+
+<div class="sidebar">
+<h3>Prompt Playbook</h3>
+
+<button onclick="setPrompt('List available domains.')">List domains</button>
+<button onclick="setPrompt('Explain the multi-point-inspection API.')">Explain MPI</button>
+<button onclick="setPrompt('Compare appointment and MPI APIs.')">Compare APIs</button>
+<button onclick="setPrompt('List schemas for multi-point-inspection.')">List schemas</button>
+<button onclick="setPrompt('Explain these APIs for executives.')">Executive explanation</button>
+
+<h3>Domain Explorer</h3>
+
+<button onclick="setPrompt('Show service domain APIs.')">Service</button>
+<button onclick="setPrompt('Show parts domain APIs.')">Parts</button>
+<button onclick="setPrompt('Show finance domain APIs.')">Finance</button>
+
+</div>
+
+<div class="main">
+
+<textarea id="prompt" placeholder="Ask about STAR APIs..."></textarea>
+<br><br>
+<button onclick="send()">Ask AI</button>
+
+<div id="response" class="response">AI response will appear here.</div>
+<button class="copy" onclick="copy()">Copy Response</button>
+
+</div>
+</div>
+
+<script>
+function setPrompt(text){
+ document.getElementById("prompt").value = text;
+}
+
+async function send(){
+ const prompt = document.getElementById("prompt").value;
+
+ const r = await fetch("/api/chat",{
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({message:prompt})
+ });
+
+ const data = await r.json();
+ document.getElementById("response").textContent = data.answer || "No response";
+}
+
+function copy(){
+ const text = document.getElementById("response").textContent;
+ navigator.clipboard.writeText(text);
+}
+</script>
+
+</body>
+</html>

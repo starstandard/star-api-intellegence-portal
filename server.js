@@ -19,9 +19,21 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/health", (_, res) => {
-  res.json({ status: "ok", service: "star-ai-intelligence-portal" });
-});
+if (!OPENAI_API_KEY) {
+  console.error("Missing OPENAI_API_KEY");
+}
+
+if (!MCP_SERVER_URL) {
+  console.error("Missing MCP_SERVER_URL");
+}
+
+if (!OPENAI_API_KEY) {
+  console.error("Missing OPENAI_API_KEY");
+}
+
+if (!MCP_SERVER_URL) {
+  console.error("Missing MCP_SERVER_URL");
+}
 
 app.post("/api/chat", async (req, res) => {
   try {

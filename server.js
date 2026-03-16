@@ -61,7 +61,13 @@ app.post("/api/chat", async (req, res) => {
     res.status(500).json({ error: "AI request failed" });
   }
 });
-
-app.listen(PORT, () => {
-  console.log("STAR AI Portal running on port", PORT);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`STAR AI Portal running on 0.0.0.0:${PORT}`);
+  console.log(`Health: http://0.0.0.0:${PORT}/health`);
+});
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'star-ai-intelligence-portal'
+  });
 });

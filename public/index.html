@@ -1,83 +1,379 @@
-
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>STAR Automotive API Intelligence</title>
-<style>
-body{font-family:Arial;background:#0b1220;color:white;margin:0}
-header{padding:20px;background:#121c3a}
-h1{margin:0;color:#7aa2ff}
-.container{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 80px)}
-.sidebar{background:#0f1832;padding:20px;overflow:auto}
-.main{padding:20px}
-button{width:100%;padding:12px;margin:6px 0;background:#1d2c57;color:white;border:none;border-radius:8px;cursor:pointer}
-textarea{width:100%;height:120px;background:#0f1832;color:white;border:1px solid #2e3f7a;border-radius:10px;padding:10px}
-.response{margin-top:20px;background:#0f1832;padding:15px;border-radius:10px;white-space:pre-wrap}
-.copy{margin-top:10px;background:#243a7a}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>STAR Automotive API Intelligence Portal</title>
+  <style>
+    :root{
+      --bg:#060d19;
+      --bg2:#0b1730;
+      --panel:rgba(16,27,52,.84);
+      --panel-strong:rgba(13,22,43,.94);
+      --line:#2d4578;
+      --line-soft:#1d2e52;
+      --text:#edf4ff;
+      --muted:#adc0e6;
+      --accent:#7fb0ff;
+      --accent2:#79e1c4;
+      --ok:#79e1c4;
+      --danger:#ff9c9c;
+      --chip:#16264a;
+      --shadow:0 24px 70px rgba(0,0,0,.34);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font:15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1100px 520px at 10% -10%, rgba(110,151,255,.28), transparent 58%),
+        radial-gradient(900px 460px at 100% 0%, rgba(62,220,186,.16), transparent 56%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+    }
+    .shell{max-width:1440px;margin:0 auto;padding:22px 18px 28px}
+    .glass{
+      background:var(--panel);
+      border:1px solid var(--line-soft);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(12px);
+    }
+    .hero{
+      display:grid;
+      grid-template-columns:1.2fr .9fr;
+      gap:24px;
+      padding:26px 28px;
+      align-items:center;
+      overflow:hidden;
+      position:relative;
+    }
+    .hero:before{
+      content:"";
+      position:absolute;
+      inset:auto -120px -120px auto;
+      width:320px;height:320px;border-radius:50%;
+      background:radial-gradient(circle, rgba(127,176,255,.22), transparent 65%);
+      pointer-events:none;
+    }
+    .brand{display:flex;gap:18px;align-items:flex-start}
+    .logo{
+      width:58px;height:58px;border-radius:18px;display:grid;place-items:center;
+      font-weight:900;font-size:28px;letter-spacing:-.03em;
+      color:#04101e;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      box-shadow:0 14px 34px rgba(92,153,255,.28);
+      flex:0 0 auto;
+    }
+    h1{margin:0 0 8px;font-size:2.05rem;line-height:1.05;letter-spacing:-.04em}
+    .lede{color:var(--muted);max-width:760px}
+    .hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .stat{background:rgba(8,16,32,.5);border:1px solid var(--line);border-radius:18px;padding:14px 15px}
+    .stat .label{font-size:.8rem;color:var(--muted);margin-bottom:4px}
+    .stat .value{font-size:1.05rem;font-weight:800}
+    .layout{display:grid;grid-template-columns:320px 1fr 320px;gap:18px;margin-top:18px;align-items:start}
+    .panel{padding:18px}
+    h2{margin:0 0 12px;font-size:1.02rem;letter-spacing:-.01em}
+    details{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:rgba(9,16,31,.5);margin-bottom:12px}
+    summary{
+      list-style:none;cursor:pointer;padding:13px 14px;background:rgba(21,36,71,.8);
+      display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:800
+    }
+    summary::-webkit-details-marker{display:none}
+    .group-body{padding:12px}
+    .badge{
+      display:inline-flex;align-items:center;border-radius:999px;padding:4px 9px;
+      font-size:.78rem;font-weight:800;border:1px solid var(--line);background:var(--chip);color:var(--muted)
+    }
+    .badge.live{border-color:#2d6d63;background:#0f2724;color:#d8fff5}
+    .badge.plan{border-color:#6f5b2e;background:#261f10;color:#ffe7af}
+    .domain-card,.prompt-card{
+      width:100%;border:1px solid var(--line);border-radius:18px;
+      background:linear-gradient(180deg, rgba(17,28,54,.96), rgba(10,16,30,.98));
+      color:var(--text);text-align:left;cursor:pointer;padding:13px 14px;margin:0 0 10px;
+      transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+      box-shadow:0 10px 24px rgba(0,0,0,.16)
+    }
+    .domain-card:hover,.prompt-card:hover,.btn:hover{transform:translateY(-1px);border-color:#5074ba}
+    .domain-title{font-weight:800;margin-bottom:4px}
+    .domain-meta,.tiny,.footer-note{color:var(--muted);font-size:.92rem}
+    .composer{
+      border:1px solid var(--line);border-radius:22px;padding:16px;
+      background:linear-gradient(180deg, rgba(14,24,47,.96), rgba(9,16,31,.98))
+    }
+    textarea{
+      width:100%;min-height:150px;resize:vertical;border-radius:18px;border:1px solid var(--line);
+      background:#091326;color:var(--text);padding:15px 16px;font:inherit;outline:none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03)
+    }
+    textarea:focus{border-color:#5e86d8;box-shadow:0 0 0 3px rgba(93,133,214,.16)}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{
+      border:1px solid var(--line);border-radius:15px;padding:11px 14px;color:var(--text);
+      background:linear-gradient(180deg,#1a2d58,#142445);font-weight:800;cursor:pointer
+    }
+    .btn.primary{
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#06111f;border-color:transparent;box-shadow:0 12px 28px rgba(90,167,255,.24)
+    }
+    .status{min-height:1.2em;margin-top:10px;color:var(--ok);font-weight:700}
+    .status.error{color:var(--danger)}
+    .results{display:grid;gap:14px;margin-top:16px}
+    .card{background:rgba(9,17,34,.68);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+    .card-hd{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;
+      border-bottom:1px solid var(--line-soft);background:rgba(18,32,62,.74)
+    }
+    .card-title{font-weight:800}
+    .card-bd{padding:14px 15px}
+    .answer{min-height:260px;white-space:pre-wrap;line-height:1.72;font-size:1rem}
+    .grid-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .kv{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;font-size:.93rem;color:var(--muted)}
+    .code-pill{
+      display:inline-block;max-width:100%;overflow-wrap:anywhere;border:1px solid var(--line-soft);
+      background:#081120;color:#dfe9ff;border-radius:12px;padding:8px 10px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88rem
+    }
+    .footer-note{margin-top:12px}
+    .subtle-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .mini-chip{
+      border-radius:999px;padding:6px 10px;border:1px solid var(--line);
+      background:rgba(14,24,47,.7);color:var(--muted);font-size:.84rem;font-weight:700
+    }
+    @media (max-width:1180px){
+      .hero{grid-template-columns:1fr}
+      .layout{grid-template-columns:1fr}
+    }
+  </style>
 </head>
 <body>
+  <div class="shell">
+    <section class="glass hero">
+      <div class="brand">
+        <div class="logo">★</div>
+        <div>
+          <h1>STAR Automotive API Intelligence Portal</h1>
+          <div class="lede">
+            Premium demo interface for exploring STAR automotive APIs with AI planning and direct MCP tool execution.
+            Ideal for showing a clean, guided experience alongside your Claude client.
+          </div>
+          <div class="subtle-row">
+            <span class="mini-chip">Connected: Appointment + MPI</span>
+            <span class="mini-chip">Execution: AI → MCP → AI</span>
+            <span class="mini-chip">Demo mode: Team-ready</span>
+          </div>
+        </div>
+      </div>
 
-<header>
-<h1>STAR Automotive API Intelligence Portal</h1>
-<div>Explore STAR automotive APIs using AI</div>
-</header>
+      <div class="hero-stats">
+        <div class="stat"><div class="label">Portal role</div><div class="value">Guided exploration</div></div>
+        <div class="stat"><div class="label">Claude role</div><div class="value">Rich analysis</div></div>
+        <div class="stat"><div class="label">Best story</div><div class="value">Appointment → MPI</div></div>
+      </div>
+    </section>
 
-<div class="container">
+    <section class="layout">
+      <aside class="glass panel">
+        <h2>Domain Explorer</h2>
 
-<div class="sidebar">
-<h3>Prompt Playbook</h3>
+        <details open>
+          <summary><span>Service Domain</span><span class="badge live">Live</span></summary>
+          <div class="group-body">
+            <button class="domain-card" data-prompt="Give me an overview of the appointment domain.">
+              <div class="domain-title">Appointment</div>
+              <div class="domain-meta">Scheduling lifecycle, booking operations, capabilities, and workflow commands.</div>
+            </button>
 
-<button onclick="setPrompt('List available domains.')">List domains</button>
-<button onclick="setPrompt('Explain the multi-point-inspection API.')">Explain MPI</button>
-<button onclick="setPrompt('Compare appointment and MPI APIs.')">Compare APIs</button>
-<button onclick="setPrompt('List schemas for multi-point-inspection.')">List schemas</button>
-<button onclick="setPrompt('Explain these APIs for executives.')">Executive explanation</button>
+            <button class="domain-card" data-prompt="Give me an overview of the multi-point-inspection domain.">
+              <div class="domain-title">Multi-Point Inspection</div>
+              <div class="domain-meta">Inspection workflows, findings, reporting structures, and operational usage.</div>
+            </button>
 
-<h3>Domain Explorer</h3>
+            <button class="domain-card" data-prompt="Compare the appointment and multi-point-inspection domains at a high level.">
+              <div class="domain-title">Cross-Domain View</div>
+              <div class="domain-meta">Show how Appointment and MPI connect inside the service journey.</div>
+            </button>
+          </div>
+        </details>
 
-<button onclick="setPrompt('Show service domain APIs.')">Service</button>
-<button onclick="setPrompt('Show parts domain APIs.')">Parts</button>
-<button onclick="setPrompt('Show finance domain APIs.')">Finance</button>
+        <details>
+          <summary><span>Parts Domain</span><span class="badge plan">Planned</span></summary>
+          <div class="group-body"><div class="tiny">Prepare for Part Master, Inventory, Pricing, and Parts Order APIs.</div></div>
+        </details>
 
-</div>
+        <details>
+          <summary><span>Finance Domain</span><span class="badge plan">Planned</span></summary>
+          <div class="group-body"><div class="tiny">Prepare for Invoice, Tax, Payment, and related finance API domains.</div></div>
+        </details>
 
-<div class="main">
+        <div class="footer-note">
+          Demo tip: start with domains, move to MPI overview, then compare Appointment vs MPI to tell a business story.
+        </div>
+      </aside>
 
-<textarea id="prompt" placeholder="Ask about STAR APIs..."></textarea>
-<br><br>
-<button onclick="send()">Ask AI</button>
+      <main class="glass panel">
+        <h2>Ask the assistant</h2>
 
-<div id="response" class="response">AI response will appear here.</div>
-<button class="copy" onclick="copy()">Copy Response</button>
+        <div class="composer">
+          <textarea id="message" placeholder="Ask about STAR APIs, domains, schemas, workflows, or business explanations..."></textarea>
+          <div class="toolbar">
+            <button class="btn primary" id="send">Ask AI</button>
+            <button class="btn" id="clear">Clear</button>
+            <button class="btn" id="copyAnswer">Copy Answer</button>
+          </div>
+          <div class="status" id="status"></div>
+        </div>
 
-</div>
-</div>
+        <div class="results">
+          <section class="card">
+            <div class="card-hd">
+              <div class="card-title">Response</div>
+              <span class="badge live">Live demo</span>
+            </div>
+            <div class="card-bd">
+              <div class="answer" id="answer">Your answer will appear here.</div>
+            </div>
+          </section>
 
-<script>
-function setPrompt(text){
- document.getElementById("prompt").value = text;
-}
+          <section class="grid-mini">
+            <div class="card">
+              <div class="card-hd"><div class="card-title">Tool selected</div></div>
+              <div class="card-bd">
+                <div class="kv">
+                  <div>Tool</div><div id="toolName">—</div>
+                  <div>Arguments</div><div id="toolArgs"><span class="code-pill">—</span></div>
+                </div>
+              </div>
+            </div>
 
-async function send(){
- const prompt = document.getElementById("prompt").value;
+            <div class="card">
+              <div class="card-hd"><div class="card-title">Response IDs</div></div>
+              <div class="card-bd">
+                <div class="kv">
+                  <div>Planner</div><div id="plannerId"><span class="code-pill">—</span></div>
+                  <div>Answer</div><div id="answerId"><span class="code-pill">—</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
 
- const r = await fetch("/api/chat",{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({message:prompt})
- });
+      <aside class="glass panel">
+        <h2>Prompt Playbook</h2>
 
- const data = await r.json();
- document.getElementById("response").textContent = data.answer || "No response";
-}
+        <button class="prompt-card" data-prompt="List available domains.">List available domains</button>
+        <button class="prompt-card" data-prompt="Give me an overview of the multi-point-inspection domain.">Overview of MPI</button>
+        <button class="prompt-card" data-prompt="List operations for the appointment domain.">List Appointment operations</button>
+        <button class="prompt-card" data-prompt="List schemas for the multi-point-inspection domain.">List MPI schemas</button>
+        <button class="prompt-card" data-prompt="Explain POST /appointments for business users.">Explain POST /appointments</button>
+        <button class="prompt-card" data-prompt="Compare the appointment and multi-point-inspection domains at a high level.">Compare Appointment vs MPI</button>
+        <button class="prompt-card" data-prompt="Suggest a customer-facing sub-API for the appointment domain.">Suggest Appointment sub-API</button>
 
-function copy(){
- const text = document.getElementById("response").textContent;
- navigator.clipboard.writeText(text);
-}
-</script>
+        <div class="footer-note">
+          Use this panel for crisp, predictable demos. Then switch to Claude for deeper exploratory conversation.
+        </div>
+      </aside>
+    </section>
+  </div>
 
+  <script>
+    const messageEl = document.getElementById('message');
+    const statusEl = document.getElementById('status');
+    const answerEl = document.getElementById('answer');
+    const toolNameEl = document.getElementById('toolName');
+    const toolArgsEl = document.getElementById('toolArgs');
+    const plannerIdEl = document.getElementById('plannerId');
+    const answerIdEl = document.getElementById('answerId');
+
+    function setPrompt(text) {
+      messageEl.value = text;
+      messageEl.focus();
+    }
+
+    function wrapCode(text) {
+      return '<span class="code-pill">' + text + '</span>';
+    }
+
+    function resetMeta() {
+      toolNameEl.textContent = '—';
+      toolArgsEl.innerHTML = wrapCode('—');
+      plannerIdEl.innerHTML = wrapCode('—');
+      answerIdEl.innerHTML = wrapCode('—');
+    }
+
+    function updateMeta(data) {
+      toolNameEl.textContent = data.tool_name || '—';
+      toolArgsEl.innerHTML = wrapCode(data.tool_arguments ? JSON.stringify(data.tool_arguments) : '—');
+      plannerIdEl.innerHTML = wrapCode(data.planner_response_id || '—');
+      answerIdEl.innerHTML = wrapCode(data.answer_response_id || '—');
+    }
+
+    async function send() {
+      const prompt = messageEl.value.trim();
+      if (!prompt) {
+        statusEl.textContent = 'Please enter a prompt.';
+        statusEl.className = 'status error';
+        return;
+      }
+
+      statusEl.textContent = 'Thinking...';
+      statusEl.className = 'status';
+      answerEl.textContent = '';
+      resetMeta();
+
+      try {
+        const r = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: prompt })
+        });
+
+        const data = await r.json();
+
+        if (!r.ok) {
+          answerEl.textContent = 'Error: ' + (data.error || 'Request failed.');
+          statusEl.textContent = 'Request failed.';
+          statusEl.className = 'status error';
+          return;
+        }
+
+        answerEl.textContent = data.answer || 'No response returned.';
+        updateMeta(data);
+        statusEl.textContent = 'Done.';
+        statusEl.className = 'status';
+      } catch (err) {
+        answerEl.textContent = 'Error: ' + (err.message || String(err));
+        statusEl.textContent = 'Request failed.';
+        statusEl.className = 'status error';
+      }
+    }
+
+    document.getElementById('send').addEventListener('click', send);
+    document.getElementById('clear').addEventListener('click', () => {
+      messageEl.value = '';
+      answerEl.textContent = 'Your answer will appear here.';
+      statusEl.textContent = '';
+      statusEl.className = 'status';
+      resetMeta();
+    });
+
+    document.getElementById('copyAnswer').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(answerEl.textContent);
+        statusEl.textContent = 'Answer copied.';
+        statusEl.className = 'status';
+      } catch {
+        statusEl.textContent = 'Copy failed.';
+        statusEl.className = 'status error';
+      }
+    });
+
+    document.querySelectorAll('[data-prompt]').forEach((el) => {
+      el.addEventListener('click', () => setPrompt(el.dataset.prompt));
+    });
+  </script>
 </body>
 </html>

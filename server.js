@@ -12,16 +12,12 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
 
-if (!OPENAI_API_KEY) {
-  console.error('Missing OPENAI_API_KEY');
-}
+if (!OPENAI_API_KEY) console.error('Missing OPENAI_API_KEY');
+if (!MCP_SERVER_URL) console.error('Missing MCP_SERVER_URL');
 
-if (!MCP_SERVER_URL) {
-  console.error('Missing MCP_SERVER_URL');
-}
-
-console.log('Portal MCP_SERVER_URL at startup:', MCP_SERVER_URL);
-console.log('Portal model at startup:', OPENAI_MODEL);
+console.log('🚀 Portal starting...');
+console.log('MCP_SERVER_URL:', MCP_SERVER_URL);
+console.log('MODEL:', OPENAI_MODEL);
 
 const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 const app = express();
@@ -31,13 +27,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let mcpRequestId = 1;
 
-/**
- * Parse either:
- * - plain JSON response body
- * - SSE response body with lines like:
- *   event: message
- *   data: {...}
- */
 function parseMcpResponseBody(rawText) {
   const trimmed = rawText.trim();
 
@@ -137,6 +126,32 @@ function simplifyToolListForPlanner(tools) {
   }));
 }
 
+// ✅ Cache MCP tools to avoid repeated tools/list calls and reduce 429s
+let cachedTools = null;
+let cachedToolsAt = 0;
+const TOOLS_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedTools() {
+  const now = Date.now();
+
+  if (cachedTools && (now - cachedToolsAt) < TOOLS_CACHE_MS) {
+    console.log('⚡ Using cached MCP tools');
+    return cachedTools;
+  }
+
+  console.log('🔄 Fetching MCP tools from server...');
+  const toolsListResult = await callMcp('tools/list', {});
+  const tools = toolsListResult?.tools ?? [];
+
+  if (!Array.isArray(tools) || tools.length === 0) {
+    throw new Error('No tools returned from MCP server.');
+  }
+
+  cachedTools = tools;
+  cachedToolsAt = now;
+  return tools;
+}
+
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
@@ -144,7 +159,9 @@ app.get('/health', (_req, res) => {
     has_openai_key: Boolean(OPENAI_API_KEY),
     has_mcp_server_url: Boolean(MCP_SERVER_URL),
     mcp_server_url: MCP_SERVER_URL || null,
-    model: OPENAI_MODEL
+    model: OPENAI_MODEL,
+    tools_cached: Boolean(cachedTools),
+    tools_cache_age_ms: cachedToolsAt ? Date.now() - cachedToolsAt : null
   });
 });
 
@@ -164,17 +181,12 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'A string "message" is required.' });
     }
 
-    console.log('Calling MCP directly via:', MCP_SERVER_URL);
+    console.log('💬 User:', message);
 
-    // 1) Get available tools directly from MCP
-    const toolsListResult = await callMcp('tools/list', {});
-    const tools = toolsListResult?.tools ?? [];
+    // 1) Use cached tools
+    const tools = await getCachedTools();
 
-    if (!Array.isArray(tools) || tools.length === 0) {
-      throw new Error('No tools returned from MCP server.');
-    }
-
-    // 2) Ask OpenAI to choose the best tool + arguments as JSON
+    // 2) Ask OpenAI to choose the best MCP tool and arguments
     const plannerPrompt = `
 You are choosing the best MCP tool for a STAR Automotive API Intelligence portal.
 
@@ -209,15 +221,15 @@ Rules:
       throw new Error(`Unable to parse tool selection JSON from model output: ${plannerText}`);
     }
 
-    console.log('Selected MCP tool:', plan.tool_name, 'args:', plan.arguments);
+    console.log('🧭 Selected MCP tool:', plan.tool_name, 'args:', plan.arguments);
 
-    // 3) Call the selected MCP tool directly
+    // 3) Call the chosen MCP tool directly
     const toolResult = await callMcp('tools/call', {
       name: plan.tool_name,
       arguments: plan.arguments || {}
     });
 
-    // 4) Ask OpenAI to turn the tool result into a clear answer
+    // 4) Ask OpenAI to turn the raw MCP result into a polished answer
     const answerPrompt = `
 You are a STAR Automotive API Intelligence assistant.
 
@@ -244,6 +256,8 @@ If the tool result already fully answers the question, summarize it neatly.
 
     const answer = answerResponse.output_text || 'No response returned.';
 
+    console.log('✅ Answer generated');
+
     return res.json({
       answer,
       tool_name: plan.tool_name,
@@ -252,7 +266,7 @@ If the tool result already fully answers the question, summarize it neatly.
       answer_response_id: answerResponse.id || null
     });
   } catch (e) {
-    console.error('AI request failed FULL ERROR:', e);
+    console.error('❌ AI request failed FULL ERROR:', e);
 
     return res.status(500).json({
       error: e?.error?.message || e?.message || 'AI request failed'
@@ -261,6 +275,6 @@ If the tool result already fully answers the question, summarize it neatly.
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`STAR AI Portal running on 0.0.0.0:${PORT}`);
+  console.log(`🌐 STAR AI Portal running on 0.0.0.0:${PORT}`);
   console.log(`Health: http://0.0.0.0:${PORT}/health`);
 });

@@ -97,6 +97,13 @@
       letter-spacing:-.01em;
     }
 
+    h3.section-title{
+      margin:0 0 12px;
+      font-size:1rem;
+      color:#cfe1ff;
+      letter-spacing:-.01em;
+    }
+
     details{
       border:1px solid var(--line);
       border-radius:16px;
@@ -155,7 +162,7 @@
       transition:border-color .16s ease, transform .16s ease;
     }
 
-    .navbtn:hover,.playbtn:hover,.nextbtn:hover,.btn:hover{
+    .navbtn:hover,.playbtn:hover,.nextbtn:hover,.schema-card:hover,.btn:hover{
       border-color:#5a7fc8;
       transform:translateY(-1px);
     }
@@ -341,24 +348,38 @@
       max-width:860px;
     }
 
-    .explore{
+    .explore,.schema-drilldown{
       margin-top:22px;
       padding-top:16px;
       border-top:1px solid var(--line-soft);
       max-width:860px;
     }
 
-    .explore h3{
-      margin:0 0 12px;
-      font-size:1rem;
-      color:#cfe1ff;
-      letter-spacing:-.01em;
-    }
-
-    .next-grid{
+    .next-grid,.schema-grid{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:10px;
+    }
+
+    .schema-card{
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:linear-gradient(180deg, rgba(21,34,61,.98), rgba(10,16,30,.98));
+      padding:14px;
+      cursor:pointer;
+      transition:border-color .16s ease, transform .16s ease;
+    }
+
+    .schema-name{
+      font-weight:800;
+      margin-bottom:6px;
+      color:#e9f2ff;
+    }
+
+    .schema-meta{
+      color:var(--muted);
+      font-size:.92rem;
+      line-height:1.55;
     }
 
     .code{
@@ -376,8 +397,8 @@
 
     @media (max-width:1100px){
       .layout{grid-template-columns:1fr}
-      .answer,.meta,.explore{max-width:none}
-      .next-grid{grid-template-columns:1fr}
+      .answer,.meta,.explore,.schema-drilldown{max-width:none}
+      .next-grid,.schema-grid{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -455,9 +476,15 @@
               <div>Tool</div><div id="toolName">—</div>
               <div>Arguments</div><div id="toolArgs"><span class="code">—</span></div>
             </div>
+
             <div class="explore" id="exploreWrap" style="display:none;">
-              <h3>Explore next</h3>
+              <h3 class="section-title">Explore next</h3>
               <div class="next-grid" id="exploreNext"></div>
+            </div>
+
+            <div class="schema-drilldown" id="schemaWrap" style="display:none;">
+              <h3 class="section-title">Schema drill-down</h3>
+              <div class="schema-grid" id="schemaCards"></div>
             </div>
           </div>
         </section>
@@ -489,6 +516,8 @@
     const thinkingEl = document.getElementById('thinking');
     const exploreWrapEl = document.getElementById('exploreWrap');
     const exploreNextEl = document.getElementById('exploreNext');
+    const schemaWrapEl = document.getElementById('schemaWrap');
+    const schemaCardsEl = document.getElementById('schemaCards');
 
     function setPrompt(text) {
       messageEl.value = text;
@@ -504,6 +533,8 @@
       toolArgsEl.innerHTML = wrapCode('—');
       exploreWrapEl.style.display = 'none';
       exploreNextEl.innerHTML = '';
+      schemaWrapEl.style.display = 'none';
+      schemaCardsEl.innerHTML = '';
     }
 
     function updateMeta(data) {
@@ -532,6 +563,33 @@
           send();
         });
         exploreNextEl.appendChild(btn);
+      });
+    }
+
+    function renderSchemaCards(cards) {
+      if (!Array.isArray(cards) || cards.length === 0) {
+        schemaWrapEl.style.display = 'none';
+        schemaCardsEl.innerHTML = '';
+        return;
+      }
+
+      schemaWrapEl.style.display = 'block';
+      schemaCardsEl.innerHTML = '';
+
+      cards.forEach((card) => {
+        const btn = document.createElement('button');
+        btn.className = 'schema-card';
+        btn.innerHTML = `
+          <div class="schema-name">${card.title || 'Schema'}</div>
+          <div class="schema-meta">${card.description || ''}</div>
+        `;
+        btn.addEventListener('click', () => {
+          if (card.prompt) {
+            setPrompt(card.prompt);
+            send();
+          }
+        });
+        schemaCardsEl.appendChild(btn);
       });
     }
 
@@ -597,6 +655,7 @@
         answerEl.innerHTML = renderAnswer(data.answer || 'No response returned.');
         updateMeta(data);
         renderExploreNext(data.explore_next || []);
+        renderSchemaCards(data.schema_cards || []);
         statusEl.textContent = 'Done.';
         statusEl.className = 'status';
       } catch (err) {

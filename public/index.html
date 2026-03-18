@@ -6,104 +6,236 @@
   <title>STAR Automotive Domain Model Intelligence Platform</title>
   <style>
     :root{
-      --bg:#07111f;
-      --bg2:#0b1730;
-      --panel:rgba(16,27,52,.86);
-      --line:#2d4578;
-      --line-soft:#1d2e52;
-      --text:#edf4ff;
-      --muted:#adc0e6;
-      --accent:#7fb0ff;
-      --accent2:#79e1c4;
-      --ok:#79e1c4;
-      --danger:#ff9c9c;
-      --chip:#16264a;
-      --radius:20px;
+      --bg:#0a1222;
+      --bg2:#0f1b33;
+      --panel:rgba(18,29,53,.88);
+      --panel-soft:rgba(13,23,43,.78);
+      --line:#253c66;
+      --line-soft:#1b2c4c;
+      --text:#eef4ff;
+      --muted:#b3c0dc;
+      --accent:#8fbaff;
+      --accent2:#8ae2ca;
+      --ok:#8ae2ca;
+      --danger:#ff9f9f;
+      --radius:22px;
+      --shadow:0 22px 56px rgba(0,0,0,.28);
     }
+
     *{box-sizing:border-box}
     html,body{height:100%}
+
     body{
       margin:0;
       color:var(--text);
-      font:15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font:16px/1.7 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
-        radial-gradient(900px 400px at 0% 0%, rgba(110,151,255,.16), transparent 55%),
-        radial-gradient(800px 380px at 100% 0%, rgba(62,220,186,.10), transparent 55%),
-        linear-gradient(180deg, #08101d, #0b1730);
+        radial-gradient(950px 420px at 0% 0%, rgba(120,160,255,.14), transparent 56%),
+        radial-gradient(850px 380px at 100% 0%, rgba(90,230,200,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
     }
-    .shell{max-width:1280px;margin:0 auto;padding:28px 20px 34px}
-    .hero{text-align:center;margin-bottom:24px}
+
+    .shell{
+      max-width:1400px;
+      margin:0 auto;
+      padding:30px 22px 36px;
+    }
+
+    .hero{
+      text-align:center;
+      margin-bottom:26px;
+    }
+
     .mark{
-      width:52px;height:52px;margin:0 auto 14px;border-radius:16px;
-      display:grid;place-items:center;font-weight:900;font-size:26px;
-      color:#07111f;background:linear-gradient(135deg,var(--accent),var(--accent2));
+      width:54px;
+      height:54px;
+      margin:0 auto 14px;
+      border-radius:16px;
+      display:grid;
+      place-items:center;
+      font-size:26px;
+      font-weight:900;
+      color:#07111f;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      box-shadow:0 14px 32px rgba(111,167,255,.24);
     }
-    h1{margin:0;font-size:2.1rem;line-height:1.08;letter-spacing:-.04em}
-    .subtitle{margin:10px auto 0;max-width:760px;color:var(--muted);font-size:1rem}
-    .layout{display:grid;grid-template-columns:280px 1fr 280px;gap:18px;align-items:start}
+
+    h1{
+      margin:0;
+      font-size:2.15rem;
+      line-height:1.08;
+      letter-spacing:-.045em;
+      font-weight:800;
+    }
+
+    .subtitle{
+      max-width:820px;
+      margin:12px auto 0;
+      color:var(--muted);
+      font-size:1rem;
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns:280px minmax(0, 1fr) 280px;
+      gap:18px;
+      align-items:start;
+    }
+
     .panel{
-      background:rgba(17,28,51,.86);
+      background:var(--panel);
       border:1px solid var(--line);
       border-radius:var(--radius);
       padding:16px;
-      box-shadow:0 20px 52px rgba(0,0,0,.24);
+      box-shadow:var(--shadow);
       backdrop-filter:blur(10px);
     }
-    h2{margin:0 0 12px;font-size:1rem;letter-spacing:-.01em}
+
+    h2{
+      margin:0 0 12px;
+      font-size:1rem;
+      letter-spacing:-.01em;
+    }
+
     details{
       border:1px solid var(--line);
       border-radius:16px;
       overflow:hidden;
-      background:rgba(10,18,34,.55);
+      background:rgba(11,19,36,.6);
       margin-bottom:12px;
     }
+
     summary{
-      cursor:pointer;list-style:none;padding:12px 13px;
-      background:rgba(20,33,60,.86);
-      display:flex;justify-content:space-between;align-items:center;
+      cursor:pointer;
+      list-style:none;
+      padding:12px 13px;
+      background:rgba(21,35,64,.88);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
       font-weight:700;
     }
+
     summary::-webkit-details-marker{display:none}
     .group-body{padding:10px}
+
     .chip{
-      padding:4px 8px;border-radius:999px;
-      font-size:.76rem;font-weight:700;
-      border:1px solid var(--line);color:var(--muted);background:#16274a;
-    }
-    .live{color:#dffcf4;background:#102924;border-color:#2e6c61}
-    .planned{color:#ffe6b4;background:#2a220f;border-color:#6a5726}
-    .navbtn,.playbtn{
-      width:100%;text-align:left;padding:12px 13px;margin-bottom:10px;
-      border-radius:16px;border:1px solid var(--line);
-      background:linear-gradient(180deg, rgba(19,31,57,.96), rgba(10,16,29,.98));
-      color:var(--text);cursor:pointer;transition:border-color .15s ease, transform .15s ease;
-    }
-    .navbtn:hover,.playbtn:hover,.btn:hover{border-color:#557ac2;transform:translateY(-1px)}
-    .nav-title{font-weight:700;margin-bottom:4px}
-    .nav-meta{font-size:.9rem;color:var(--muted)}
-    .composer{
-      background:rgba(11,19,35,.76);
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:.76rem;
+      font-weight:700;
       border:1px solid var(--line);
-      border-radius:18px;
+      color:var(--muted);
+      background:#16274a;
+    }
+
+    .live{
+      color:#defcf4;
+      background:#102924;
+      border-color:#2f6f63;
+    }
+
+    .planned{
+      color:#ffe4af;
+      background:#2a220f;
+      border-color:#6d5927;
+    }
+
+    .navbtn,.playbtn,.nextbtn{
+      width:100%;
+      text-align:left;
+      padding:12px 13px;
+      margin-bottom:10px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(21,34,61,.98), rgba(10,16,30,.98));
+      color:var(--text);
+      cursor:pointer;
+      transition:border-color .16s ease, transform .16s ease;
+    }
+
+    .navbtn:hover,.playbtn:hover,.nextbtn:hover,.btn:hover{
+      border-color:#5a7fc8;
+      transform:translateY(-1px);
+    }
+
+    .nav-title{
+      font-weight:700;
+      margin-bottom:4px;
+    }
+
+    .nav-meta{
+      color:var(--muted);
+      font-size:.92rem;
+      line-height:1.5;
+    }
+
+    .composer{
+      background:var(--panel-soft);
+      border:1px solid var(--line);
+      border-radius:20px;
       padding:14px;
     }
+
     textarea{
-      width:100%;min-height:140px;resize:vertical;border-radius:16px;border:1px solid var(--line);
-      background:#0a1427;color:var(--text);padding:14px 15px;font:inherit;outline:none;
+      width:100%;
+      min-height:132px;
+      resize:vertical;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:#0b1528;
+      color:var(--text);
+      padding:14px 15px;
+      font:inherit;
+      outline:none;
     }
-    textarea:focus{border-color:#5e86d8;box-shadow:0 0 0 3px rgba(93,133,214,.15)}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+
+    textarea:focus{
+      border-color:#648ddd;
+      box-shadow:0 0 0 3px rgba(100,141,221,.14);
+    }
+
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+
     .btn{
-      padding:10px 14px;border-radius:14px;border:1px solid var(--line);
-      background:#16284a;color:var(--text);font-weight:700;cursor:pointer;
+      padding:10px 14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:#182a4b;
+      color:var(--text);
+      font-weight:700;
+      cursor:pointer;
     }
+
     .btn.primary{
       background:linear-gradient(135deg,var(--accent),var(--accent2));
-      border-color:transparent;color:#06111f;
+      border-color:transparent;
+      color:#06111f;
     }
-    .btn.loading{opacity:.75;pointer-events:none}
-    .status{min-height:1.2em;margin-top:10px;color:var(--ok);font-weight:700}
-    .status.error{color:var(--danger)}
+
+    .btn.loading{
+      opacity:.72;
+      pointer-events:none;
+    }
+
+    .status{
+      min-height:1.2em;
+      margin-top:10px;
+      color:var(--ok);
+      font-weight:700;
+      font-size:.95rem;
+    }
+
+    .status.error{
+      color:var(--danger);
+    }
+
     .thinking{
       display:none;
       align-items:center;
@@ -111,42 +243,141 @@
       margin-top:14px;
       color:var(--muted);
       font-weight:600;
+      font-size:.95rem;
     }
-    .thinking.active{display:flex}
-    .dots{display:inline-flex;gap:6px}
+
+    .thinking.active{
+      display:flex;
+    }
+
+    .dots{
+      display:inline-flex;
+      gap:6px;
+    }
+
     .dots span{
-      width:8px;height:8px;border-radius:50%;
+      width:8px;
+      height:8px;
+      border-radius:50%;
       background:linear-gradient(135deg,var(--accent),var(--accent2));
       animation:bounce 1.2s infinite ease-in-out;
       opacity:.9;
     }
+
     .dots span:nth-child(2){animation-delay:.15s}
     .dots span:nth-child(3){animation-delay:.3s}
+
     @keyframes bounce{
       0%,80%,100%{transform:translateY(0);opacity:.45}
       40%{transform:translateY(-5px);opacity:1}
     }
+
     .response{
-      margin-top:16px;background:rgba(10,17,31,.7);
-      border:1px solid var(--line);border-radius:18px;overflow:hidden;
+      margin-top:18px;
+      background:rgba(10,18,33,.76);
+      border:1px solid var(--line);
+      border-radius:22px;
+      overflow:hidden;
+      box-shadow:0 16px 40px rgba(0,0,0,.18);
     }
+
     .response-hd{
-      padding:12px 14px;border-bottom:1px solid var(--line);
-      background:rgba(18,31,57,.76);font-weight:700;
+      padding:13px 16px;
+      border-bottom:1px solid var(--line-soft);
+      background:rgba(18,32,59,.76);
+      font-weight:700;
+      letter-spacing:-.01em;
     }
-    .response-bd{padding:16px}
-    .answer{min-height:320px;white-space:pre-wrap;line-height:1.72;font-size:1rem}
+
+    .response-bd{
+      padding:24px 28px;
+    }
+
+    .answer{
+      min-height:360px;
+      max-width:860px;
+      white-space:pre-wrap;
+      line-height:1.85;
+      font-size:1.03rem;
+      color:#eef4ff;
+    }
+
+    .answer h3{
+      margin:1.4em 0 .6em;
+      font-size:1.1rem;
+      font-weight:800;
+      color:#cfe1ff;
+      letter-spacing:-.01em;
+    }
+
+    .answer p{
+      margin:0 0 1em;
+    }
+
+    .answer ul{
+      margin:0 0 1em 1.2em;
+      padding:0;
+    }
+
+    .answer li{
+      margin-bottom:.5em;
+      line-height:1.7;
+    }
+
+    .answer strong{
+      color:#ffffff;
+      font-weight:800;
+    }
+
     .meta{
-      margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
-      display:grid;grid-template-columns:100px 1fr;gap:8px 12px;font-size:.9rem;color:var(--muted);
+      margin-top:22px;
+      padding-top:16px;
+      border-top:1px solid var(--line-soft);
+      display:grid;
+      grid-template-columns:100px 1fr;
+      gap:8px 12px;
+      font-size:.9rem;
+      color:var(--muted);
+      max-width:860px;
     }
+
+    .explore{
+      margin-top:22px;
+      padding-top:16px;
+      border-top:1px solid var(--line-soft);
+      max-width:860px;
+    }
+
+    .explore h3{
+      margin:0 0 12px;
+      font-size:1rem;
+      color:#cfe1ff;
+      letter-spacing:-.01em;
+    }
+
+    .next-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
     .code{
-      display:inline-block;max-width:100%;overflow-wrap:anywhere;
-      padding:7px 9px;border-radius:10px;background:#09111f;border:1px solid #1e3050;color:#deebff;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86rem;
+      display:inline-block;
+      max-width:100%;
+      overflow-wrap:anywhere;
+      padding:7px 9px;
+      border-radius:10px;
+      background:#09111f;
+      border:1px solid #213454;
+      color:#deebff;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:.86rem;
     }
+
     @media (max-width:1100px){
       .layout{grid-template-columns:1fr}
+      .answer,.meta,.explore{max-width:none}
+      .next-grid{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -171,10 +402,12 @@
               <div class="nav-title">Appointment</div>
               <div class="nav-meta">Scheduling lifecycle, booking operations, capabilities, and workflow commands.</div>
             </button>
+
             <button class="navbtn" data-prompt="Give me an overview of the multi-point-inspection domain.">
               <div class="nav-title">Multi-Point Inspection</div>
               <div class="nav-meta">Inspection workflows, findings, reporting structures, and operational usage.</div>
             </button>
+
             <button class="navbtn" data-prompt="Compare the appointment and multi-point-inspection domains at a high level.">
               <div class="nav-title">Cross-Domain View</div>
               <div class="nav-meta">Show how Appointment and MPI connect inside the service journey.</div>
@@ -184,17 +417,22 @@
 
         <details>
           <summary><span>Parts Domain</span><span class="chip planned">Planned</span></summary>
-          <div class="group-body"><div class="nav-meta">Prepare for Part Master, Inventory, Pricing, and Parts Order APIs.</div></div>
+          <div class="group-body">
+            <div class="nav-meta">Prepare for Part Master, Inventory, Pricing, and Parts Order APIs.</div>
+          </div>
         </details>
 
         <details>
           <summary><span>Finance Domain</span><span class="chip planned">Planned</span></summary>
-          <div class="group-body"><div class="nav-meta">Prepare for Invoice, Tax, Payment, and related finance API domains.</div></div>
+          <div class="group-body">
+            <div class="nav-meta">Prepare for Invoice, Tax, Payment, and related finance API domains.</div>
+          </div>
         </details>
       </aside>
 
       <main class="panel">
         <h2>Ask the assistant</h2>
+
         <div class="composer">
           <textarea id="message" placeholder="Ask about STAR APIs, domains, schemas, workflows, or business explanations..."></textarea>
           <div class="toolbar">
@@ -217,12 +455,17 @@
               <div>Tool</div><div id="toolName">—</div>
               <div>Arguments</div><div id="toolArgs"><span class="code">—</span></div>
             </div>
+            <div class="explore" id="exploreWrap" style="display:none;">
+              <h3>Explore next</h3>
+              <div class="next-grid" id="exploreNext"></div>
+            </div>
           </div>
         </section>
       </main>
 
       <aside class="panel">
         <h2>Prompt Playbook</h2>
+
         <button class="playbtn" data-prompt="List available domains.">List available domains</button>
         <button class="playbtn" data-prompt="Give me an overview of the multi-point-inspection domain.">Overview of MPI</button>
         <button class="playbtn" data-prompt="List operations for the appointment domain.">List Appointment operations</button>
@@ -244,6 +487,8 @@
     const clearBtn = document.getElementById('clear');
     const copyBtn = document.getElementById('copyAnswer');
     const thinkingEl = document.getElementById('thinking');
+    const exploreWrapEl = document.getElementById('exploreWrap');
+    const exploreNextEl = document.getElementById('exploreNext');
 
     function setPrompt(text) {
       messageEl.value = text;
@@ -257,11 +502,37 @@
     function resetMeta() {
       toolNameEl.textContent = '—';
       toolArgsEl.innerHTML = wrapCode('—');
+      exploreWrapEl.style.display = 'none';
+      exploreNextEl.innerHTML = '';
     }
 
     function updateMeta(data) {
       toolNameEl.textContent = data.tool_name || '—';
-      toolArgsEl.innerHTML = wrapCode(data.tool_arguments ? JSON.stringify(data.tool_arguments) : '—');
+      toolArgsEl.innerHTML = wrapCode(
+        data.tool_arguments ? JSON.stringify(data.tool_arguments) : '—'
+      );
+    }
+
+    function renderExploreNext(prompts) {
+      if (!Array.isArray(prompts) || prompts.length === 0) {
+        exploreWrapEl.style.display = 'none';
+        exploreNextEl.innerHTML = '';
+        return;
+      }
+
+      exploreWrapEl.style.display = 'block';
+      exploreNextEl.innerHTML = '';
+
+      prompts.forEach((prompt) => {
+        const btn = document.createElement('button');
+        btn.className = 'nextbtn';
+        btn.textContent = prompt;
+        btn.addEventListener('click', () => {
+          setPrompt(prompt);
+          send();
+        });
+        exploreNextEl.appendChild(btn);
+      });
     }
 
     function setLoading(loading) {
@@ -270,6 +541,27 @@
       clearBtn.disabled = loading;
       copyBtn.disabled = loading;
       thinkingEl.classList.toggle('active', loading);
+    }
+
+    function renderAnswer(text) {
+      if (!text) return '';
+
+      let html = text.replace(/\r\n/g, '\n');
+
+      html = html.replace(/^\s*(\d+\.\s+[^\n]+)/gm, '<h3>$1</h3>');
+      html = html.replace(/^\s*[-•]\s+(.*)$/gm, '<li>$1</li>');
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+      const parts = html.split('\n\n');
+      html = parts.map((part) => {
+        const trimmed = part.trim();
+        if (!trimmed) return '';
+        if (trimmed.startsWith('<h3>')) return trimmed;
+        if (trimmed.includes('<li>')) return `<ul>${trimmed}</ul>`;
+        return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
+      }).join('');
+
+      return html;
     }
 
     async function send() {
@@ -302,8 +594,9 @@
           return;
         }
 
-        answerEl.textContent = data.answer || 'No response returned.';
+        answerEl.innerHTML = renderAnswer(data.answer || 'No response returned.');
         updateMeta(data);
+        renderExploreNext(data.explore_next || []);
         statusEl.textContent = 'Done.';
         statusEl.className = 'status';
       } catch (err) {
@@ -316,6 +609,7 @@
     }
 
     sendBtn.addEventListener('click', send);
+
     clearBtn.addEventListener('click', () => {
       messageEl.value = '';
       answerEl.textContent = 'Your answer will appear here.';
@@ -326,7 +620,7 @@
 
     copyBtn.addEventListener('click', async () => {
       try {
-        await navigator.clipboard.writeText(answerEl.textContent);
+        await navigator.clipboard.writeText(answerEl.innerText);
         statusEl.textContent = 'Answer copied.';
         statusEl.className = 'status';
       } catch {

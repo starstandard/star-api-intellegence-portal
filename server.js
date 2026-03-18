@@ -89,6 +89,13 @@ async function callMcp(method, params = {}) {
   return parsed.result;
 }
 
+async function callMcpTool(name, args = {}) {
+  return callMcp('tools/call', {
+    name,
+    arguments: args
+  });
+}
+
 function safeJsonParse(text) {
   try {
     return JSON.parse(text);
@@ -126,10 +133,10 @@ function simplifyToolListForPlanner(tools) {
   }));
 }
 
-// ✅ Cache MCP tools to avoid repeated tools/list calls and reduce 429s
+// Cache tools to reduce MCP load and avoid repeated tools/list calls.
 let cachedTools = null;
 let cachedToolsAt = 0;
-const TOOLS_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+const TOOLS_CACHE_MS = 5 * 60 * 1000;
 
 async function getCachedTools() {
   const now = Date.now();
@@ -150,6 +157,200 @@ async function getCachedTools() {
   cachedTools = tools;
   cachedToolsAt = now;
   return tools;
+}
+
+function extractStructuredContent(toolResult) {
+  if (!toolResult) return null;
+  if (toolResult.structuredContent) return toolResult.structuredContent;
+  if (toolResult.content) return toolResult.content;
+  return toolResult;
+}
+
+function deriveDomainInsights(operationsResult, schemasResult) {
+  const ops =
+    operationsResult?.structuredContent?.operations ||
+    operationsResult?.operations ||
+    [];
+
+  const schemas =
+    schemasResult?.structuredContent?.schemas ||
+    schemasResult?.schemas ||
+    [];
+
+  const pathCounts = new Map();
+  const tagCounts = new Map();
+  const schemaNames = [];
+  const conceptHints = new Set();
+
+  for (const op of ops) {
+    const path = op.path || '';
+    const segments = path.split('/').filter(Boolean);
+    const top = segments[0] || 'root';
+    pathCounts.set(top, (pathCounts.get(top) || 0) + 1);
+
+    const tags = Array.isArray(op.tags) ? op.tags : [];
+    for (const tag of tags) {
+      const t = String(tag);
+      tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+    }
+
+    const hay = `${op.summary || ''} ${op.description || ''} ${path}`.toLowerCase();
+    if (hay.includes('manifest')) conceptHints.add('Manifest');
+    if (hay.includes('inspection')) conceptHints.add('Inspection');
+    if (hay.includes('labor')) conceptHints.add('LaborOperation');
+    if (hay.includes('media')) conceptHints.add('Media');
+    if (hay.includes('event')) conceptHints.add('Event');
+    if (hay.includes('finding')) conceptHints.add('Finding');
+    if (hay.includes('pricing')) conceptHints.add('Pricing');
+    if (hay.includes('part')) conceptHints.add('Part');
+  }
+
+  for (const schema of schemas.slice(0, 50)) {
+    const name = schema.name || '';
+    schemaNames.push(name);
+
+    const lower = name.toLowerCase();
+    if (lower.includes('manifest')) conceptHints.add('Manifest');
+    if (lower.includes('inspection')) conceptHints.add('Inspection');
+    if (lower.includes('labor')) conceptHints.add('LaborOperation');
+    if (lower.includes('media')) conceptHints.add('Media');
+    if (lower.includes('event')) conceptHints.add('Event');
+    if (lower.includes('finding')) conceptHints.add('Finding');
+    if (lower.includes('price')) conceptHints.add('Pricing');
+    if (lower.includes('part')) conceptHints.add('Part');
+  }
+
+  const resourceGroups = Array.from(pathCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([name, count]) => ({ name, operation_count: count }));
+
+  const topTags = Array.from(tagCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([name, count]) => ({ name, operation_count: count }));
+
+  return {
+    operation_count: ops.length,
+    schema_count: schemas.length,
+    top_resource_groups: resourceGroups,
+    top_tags: topTags,
+    candidate_core_concepts: Array.from(conceptHints),
+    sample_schema_names: schemaNames.slice(0, 20)
+  };
+}
+
+function detectDomainOverviewIntent(message) {
+  const lower = message.toLowerCase();
+
+  const wantsOverview =
+    lower.includes('overview') ||
+    lower.includes('summarize') ||
+    lower.includes('summary') ||
+    lower.includes('what is') ||
+    lower.includes('how does') ||
+    lower.includes('explain the') ||
+    lower.includes('tell me about');
+
+  if (!wantsOverview) return null;
+
+  if (
+    lower.includes('multi point inspection') ||
+    lower.includes('multi-point-inspection') ||
+    lower.includes('mpi')
+  ) {
+    return 'multi-point-inspection';
+  }
+
+  if (lower.includes('appointment')) {
+    return 'appointment';
+  }
+
+  return null;
+}
+
+async function buildDomainOverview(domainName, userMessage) {
+  console.log(`🧠 Running overview pipeline for domain: ${domainName}`);
+
+  const overviewResult = await callMcpTool('getApiOverview', {
+    domain_name: domainName
+  });
+
+  const operationsResult = await callMcpTool('listOperations', {
+    domain_name: domainName,
+    limit: 200
+  });
+
+  const schemasResult = await callMcpTool('listSchemas', {
+    domain_name: domainName,
+    limit: 200
+  });
+
+  const derived = deriveDomainInsights(operationsResult, schemasResult);
+
+  const overviewData = extractStructuredContent(overviewResult);
+  const operationsData = extractStructuredContent(operationsResult);
+  const schemasData = extractStructuredContent(schemasResult);
+
+  const synthesisPrompt = `
+You are generating a rich domain overview for the STAR Automotive Domain Model Intelligence Platform.
+
+User request:
+${userMessage}
+
+Domain:
+${domainName}
+
+You are given:
+1. Domain overview metadata
+2. Operations list
+3. Schema list
+4. Derived resource groupings and concept hints
+
+Domain overview metadata:
+${JSON.stringify(overviewData, null, 2)}
+
+Operations list:
+${JSON.stringify(operationsData, null, 2)}
+
+Schema list:
+${JSON.stringify(schemasData, null, 2)}
+
+Derived insights:
+${JSON.stringify(derived, null, 2)}
+
+Write a structured overview with these sections:
+
+1. What it is
+2. Core concepts
+3. Main resources
+4. Key operation groups
+5. Typical workflow
+6. Important schemas or data structures
+7. Where to drill deeper next
+
+Requirements:
+- Be clear and business-friendly but technically grounded.
+- Highlight likely central objects if the data suggests them.
+- Explain how the domain fits into automotive retail workflow.
+- Use short paragraphs and compact bullets when helpful.
+- Do not invent details not supported by the provided data.
+- If making an inference, say it appears to or seems to.
+- End with 3 concise next-step suggestions for exploration.
+`;
+
+  const answerResponse = await client.responses.create({
+    model: OPENAI_MODEL,
+    input: synthesisPrompt
+  });
+
+  return {
+    answer: answerResponse.output_text || 'No response returned.',
+    tool_name: 'domainOverviewPipeline',
+    tool_arguments: { domain_name: domainName },
+    planner_response_id: null,
+    answer_response_id: answerResponse.id || null
+  };
 }
 
 app.get('/health', (_req, res) => {
@@ -183,10 +384,16 @@ app.post('/api/chat', async (req, res) => {
 
     console.log('💬 User:', message);
 
-    // 1) Use cached tools
+    // Dedicated rich overview path for domain overview questions.
+    const overviewDomain = detectDomainOverviewIntent(message);
+    if (overviewDomain) {
+      const result = await buildDomainOverview(overviewDomain, message);
+      return res.json(result);
+    }
+
+    // Generic tool-planning path.
     const tools = await getCachedTools();
 
-    // 2) Ask OpenAI to choose the best MCP tool and arguments
     const plannerPrompt = `
 You are choosing the best MCP tool for a STAR Automotive API Intelligence portal.
 
@@ -223,13 +430,8 @@ Rules:
 
     console.log('🧭 Selected MCP tool:', plan.tool_name, 'args:', plan.arguments);
 
-    // 3) Call the chosen MCP tool directly
-    const toolResult = await callMcp('tools/call', {
-      name: plan.tool_name,
-      arguments: plan.arguments || {}
-    });
+    const toolResult = await callMcpTool(plan.tool_name, plan.arguments || {});
 
-    // 4) Ask OpenAI to turn the raw MCP result into a polished answer
     const answerPrompt = `
 You are a STAR Automotive API Intelligence assistant.
 
@@ -255,8 +457,6 @@ If the tool result already fully answers the question, summarize it neatly.
     });
 
     const answer = answerResponse.output_text || 'No response returned.';
-
-    console.log('✅ Answer generated');
 
     return res.json({
       answer,

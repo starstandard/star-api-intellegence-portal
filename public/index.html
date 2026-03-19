@@ -148,7 +148,7 @@
       transition:border-color .16s ease, transform .16s ease;
     }
 
-    .navbtn:hover,.playbtn:hover,.nextbtn:hover,.schema-card:hover,.btn:hover{
+    .navbtn:hover,.playbtn:hover,.nextbtn:hover,.schema-card:hover,.schema-link:hover,.btn:hover{
       border-color:#5a7fc8;
       transform:translateY(-1px);
     }
@@ -320,6 +320,19 @@
     .answer strong{
       color:#ffffff;
       font-weight:800;
+    }
+
+    .schema-link{
+      display:inline-block;
+      margin:0 2px;
+      padding:1px 7px;
+      border-radius:999px;
+      border:1px solid #325387;
+      background:rgba(40,70,120,.35);
+      color:#d9e8ff;
+      cursor:pointer;
+      font-weight:700;
+      text-decoration:none;
     }
 
     .meta{
@@ -567,8 +580,8 @@
         const btn = document.createElement('button');
         btn.className = 'schema-card';
         btn.innerHTML =
-          '<div class="schema-name">' + (card.title || 'Schema') + '</div>' +
-          '<div class="schema-meta">' + (card.description || '') + '</div>';
+          '<div class="schema-name">' + escapeHtml(card.title || 'Schema') + '</div>' +
+          '<div class="schema-meta">' + escapeHtml(card.description || '') + '</div>';
         btn.addEventListener('click', () => {
           if (card.prompt) {
             setPrompt(card.prompt);
@@ -587,10 +600,50 @@
       thinkingEl.classList.toggle('active', loading);
     }
 
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function detectSchemaNames(rawText) {
+      const matches = new Set();
+      const regex = /\b([A-Z][A-Za-z0-9_]*(?:Type|Reference|Response|Request|Manifest|Inspection|Operation|Finding|Media|Event|Part|Price|Labor)[A-Za-z0-9_]*)\b/g;
+      let m;
+      while ((m = regex.exec(rawText)) !== null) {
+        matches.add(m[1]);
+      }
+      return Array.from(matches).slice(0, 12);
+    }
+
+    function schemaPromptForName(name) {
+      const lower = messageEl.value.toLowerCase();
+      const domain = lower.includes('multi point inspection') || lower.includes('multi-point-inspection') || lower.includes('mpi')
+        ? 'multi-point-inspection'
+        : lower.includes('appointment')
+          ? 'appointment'
+          : '';
+      return `Show me schema details for ${name}${domain ? ` in the ${domain} domain` : ''}.`;
+    }
+
+    function linkSchemaNames(html, rawText) {
+      const names = detectSchemaNames(rawText);
+      let out = html;
+      names.forEach((name) => {
+        const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`\\b${safe}\\b`, 'g');
+        out = out.replace(re, `<a href="#" class="schema-link" data-schema="${name}">${name}</a>`);
+      });
+      return out;
+    }
+
     function renderAnswer(text) {
       if (!text) return '';
 
-      let html = text.replace(/\r\n/g, '\n');
+      let html = escapeHtml(text).replace(/\r\n/g, '\n');
 
       html = html.replace(/^\s*(\d+\.\s+[^\n]+)/gm, '<h3>$1</h3>');
       html = html.replace(/^\s*[-•]\s+(.*)$/gm, '<li>$1</li>');
@@ -605,8 +658,19 @@
         return '<p>' + trimmed.replace(/\n/g, '<br>') + '</p>';
       }).join('');
 
+      html = linkSchemaNames(html, text);
       return html;
     }
+
+    answerEl.addEventListener('click', (event) => {
+      const target = event.target.closest('.schema-link');
+      if (!target) return;
+      event.preventDefault();
+      const schema = target.getAttribute('data-schema');
+      if (!schema) return;
+      setPrompt(schemaPromptForName(schema));
+      send();
+    });
 
     async function send() {
       const prompt = messageEl.value.trim();

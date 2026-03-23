@@ -1,43 +1,358 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>STAR V4</title>
-<style>
-body{background:#0b0f1a;color:white;font-family:sans-serif}
-button{padding:10px;margin:5px;background:#1e2a44;color:white;border:none}
-</style>
+  <meta charset="UTF-8" />
+  <title>STAR Automotive API Intelligence</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{--bg:#08111f;--bg-2:#0b1528;--panel:#0f1b33cc;--line:#243a66;--line-soft:#1b2c4d;--text:#eef4ff;--muted:#9fb0cf;--muted-2:#7f92b4;--accent:#7fb4ff;--accent2:#76e1c3;--shadow:0 24px 70px rgba(0,0,0,.35)}
+    *{box-sizing:border-box}
+    body{margin:0;color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(1100px 520px at 0% 0%, rgba(99,156,255,.16), transparent 55%),radial-gradient(900px 420px at 100% 0%, rgba(93,231,194,.12), transparent 52%),linear-gradient(180deg,var(--bg),var(--bg-2))}
+    .shell{max-width:1580px;margin:0 auto;min-height:100vh;padding:22px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .brand{display:flex;align-items:center;gap:14px}
+    .brand-mark{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#07111f;font-weight:900;box-shadow:0 12px 28px rgba(111,167,255,.28)}
+    .brand-copy h1{margin:0;font-size:22px;letter-spacing:-.03em;line-height:1.05}
+    .brand-copy p{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .top-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .pill{border:1px solid var(--line);background:rgba(12,21,40,.82);color:var(--muted);border-radius:999px;padding:7px 11px;font-size:12px;font-weight:700}
+    .layout{display:grid;grid-template-columns:280px minmax(0,1fr) 380px;gap:18px;align-items:start}
+    .panel{background:var(--panel);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+    .sidebar-section,.right-group{padding:16px;border-bottom:1px solid var(--line-soft)}
+    .sidebar-section:last-child,.right-group:last-child{border-bottom:none}
+    .eyebrow{margin:0 0 10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+    .nav-card,.play-card,.action-card,.schema-card,.endpoint-card,.capability-card,.workflow-card{width:100%;text-align:left;color:var(--text);background:linear-gradient(180deg, rgba(20,33,60,.98), rgba(9,16,30,.98));border:1px solid var(--line);border-radius:14px;padding:12px 13px;cursor:pointer;transition:.16s ease;margin-bottom:10px}
+    .nav-card:hover,.play-card:hover,.action-card:hover,.schema-card:hover,.endpoint-card:hover,.capability-card:hover,.btn:hover,.ghost:hover,.tab:hover,.mini-btn:hover,.workflow-card:hover{transform:translateY(-1px);border-color:#5b84d9;background:linear-gradient(180deg, rgba(24,39,70,.98), rgba(12,20,37,.98))}
+    .nav-title,.schema-title,.endpoint-title,.capability-title,.workflow-title{font-weight:800;letter-spacing:-.01em}
+    .nav-meta,.schema-meta,.endpoint-meta,.capability-meta,.workflow-meta{color:var(--muted);font-size:13px;line-height:1.45;margin-top:4px}
+    .hero{margin-bottom:16px;padding:20px;background:radial-gradient(700px 240px at 0% 0%, rgba(120,170,255,.16), transparent 55%),linear-gradient(180deg, rgba(18,30,57,.95), rgba(12,21,41,.95));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+    .hero h2{margin:0;font-size:28px;line-height:1.05;letter-spacing:-.04em}
+    .hero p{margin:10px 0 0;color:var(--muted);max-width:920px;font-size:15px}
+    .hero-tags{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .hero-tag{border:1px solid var(--line);background:rgba(10,18,34,.75);color:#dce8ff;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700}
+    .composer{padding:16px;margin-bottom:16px}
+    textarea{width:100%;min-height:116px;resize:vertical;border-radius:14px;border:1px solid var(--line);background:#08111f;color:var(--text);padding:14px;font:inherit;outline:none}
+    textarea:focus{border-color:#6e9cff;box-shadow:0 0 0 3px rgba(110,156,255,.14)}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+    .toolbar-left,.toolbar-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn,.ghost,.tab,.mini-btn{border:none;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;letter-spacing:-.01em}
+    .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#07111f}
+    .ghost,.tab,.mini-btn{background:#182746;color:#e5efff;border:1px solid var(--line)}
+    .mini-btn{padding:8px 10px;font-size:12px}
+    .status{color:var(--muted);font-size:13px;min-height:1.2em}
+    .thinking{display:none;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+    .thinking.active{display:flex}
+    .dots{display:inline-flex;gap:5px}.dots span{width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));animation:bounce 1.2s infinite ease-in-out}
+    .dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+    @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.45}40%{transform:translateY(-4px);opacity:1}}
+    .response-hd{padding:14px 18px;border-bottom:1px solid var(--line-soft);background:rgba(16,28,52,.88);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    .response-title{font-size:15px;font-weight:800}
+    .response-tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab.active{background:#223866;border-color:#4c72c0}
+    .response-bd{padding:18px}
+    .sections-view,.raw-view{display:none}.sections-view.active,.raw-view.active{display:block}
+    .section-card{background:linear-gradient(180deg, rgba(19,33,61,.96), rgba(11,20,37,.96));border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+    .section-title{margin:0 0 10px;color:#dbeafe;font-size:18px;font-weight:800}
+    .section-body{white-space:pre-wrap;line-height:1.75;color:var(--text)}
+    .raw-view{white-space:pre-wrap;line-height:1.75;color:var(--text);background:#09111f;border:1px solid var(--line);border-radius:14px;padding:16px}
+    .meta-grid{margin-top:16px;display:grid;grid-template-columns:100px 1fr;gap:8px 12px;color:var(--muted);font-size:13px}
+    .code{display:inline-block;max-width:100%;overflow-wrap:anywhere;padding:7px 9px;border-radius:10px;background:#08111f;border:1px solid var(--line);color:#dbeafe;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+    .inspector-empty{color:var(--muted-2);font-size:13px;padding:8px 2px}
+    .inspector-header{padding:16px;border-bottom:1px solid var(--line-soft)}
+    .inspector-title{font-size:18px;font-weight:800;letter-spacing:-.02em}
+    .inspector-sub{color:var(--muted);font-size:13px;margin-top:4px}
+    .inspector-body{padding:16px}
+    .modal{position:fixed;inset:0;background:rgba(2,6,23,.78);display:none;align-items:center;justify-content:center;padding:20px;z-index:999}
+    .modal.active{display:flex}
+    .modal-card{width:min(1200px,100%);max-height:88vh;overflow:auto;background:#0b1220;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px}
+    .modal-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+    .modal-title{font-size:20px;font-weight:800}
+    .close-btn{border:none;background:#1e2f54;color:#fff;border-radius:10px;padding:9px 12px;cursor:pointer}
+    @media (max-width:1320px){.layout{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">★</div>
+        <div class="brand-copy">
+          <h1>STAR Automotive API Intelligence</h1>
+          <p>Persistent inspector experience for dealer-service API discovery.</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="pill">V5 Persistent Inspector</div>
+        <div class="pill">Workflow Map</div>
+        <div class="pill">Capability Guidance</div>
+      </div>
+    </div>
 
-<h2>STAR API Intelligence V4</h2>
+    <div class="layout">
+      <aside class="panel">
+        <div class="sidebar-section">
+          <div class="eyebrow">API Explorer</div>
+          <button class="nav-card" onclick="ask('Give me an overview of the Appointment API')"><div class="nav-title">Appointment API</div><div class="nav-meta">Dealer vehicle service scheduling and service-lane workflow.</div></button>
+          <button class="nav-card" onclick="ask('Give me an overview of the Multi-Point Inspection API')"><div class="nav-title">Multi-Point Inspection API</div><div class="nav-meta">Vehicle inspection workflow, findings, labor, and advisor-facing actions.</div></button>
+          <button class="nav-card" onclick="ask('Show me the business capabilities of the Multi-Point Inspection API for a dealership service advisor')"><div class="nav-title">MPI Business Capabilities</div><div class="nav-meta">Launch service-advisor guidance and capability cards.</div></button>
+        </div>
+        <div class="sidebar-section">
+          <div class="eyebrow">Executive Demo Mode</div>
+          <div id="executivePrompts"></div>
+        </div>
+      </aside>
 
-<textarea id="q" style="width:100%;height:100px"></textarea><br>
-<button onclick="ask()">Ask</button>
+      <main>
+        <section class="hero panel">
+          <h2>Capability-first product experience for STAR APIs</h2>
+          <p>Explore APIs, business capabilities, workflows, schemas, and endpoints with a persistent inspector designed for executive demos and dealer-service use cases.</p>
+          <div class="hero-tags">
+            <div class="hero-tag">Appointment API</div>
+            <div class="hero-tag">MPI API</div>
+            <div class="hero-tag">Workflow Map</div>
+            <div class="hero-tag">Persistent Inspector</div>
+          </div>
+        </section>
 
-<h3>Answer</h3>
-<div id="a"></div>
+        <section class="panel composer">
+          <textarea id="prompt" placeholder="Ask about an API, schema, endpoint, business capability, or dealership service-lane workflow..."></textarea>
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <button class="btn" id="sendBtn" onclick="send()">Ask AI</button>
+              <button class="ghost" onclick="clearAll()">Clear</button>
+              <button class="ghost" onclick="copyAnswer()">Copy Answer</button>
+            </div>
+            <div class="toolbar-right">
+              <div class="thinking" id="thinking"><div class="dots"><span></span><span></span><span></span></div><div>Working through STAR API intelligence…</div></div>
+              <div class="status" id="status"></div>
+            </div>
+          </div>
+        </section>
 
-<h3>Business Capabilities</h3>
-<div id="cards"></div>
+        <section class="panel">
+          <div class="response-hd">
+            <div class="response-title">Response</div>
+            <div class="response-tabs">
+              <button class="tab active" id="sectionsTab" onclick="showView('sections')">Structured View</button>
+              <button class="tab" id="rawTab" onclick="showView('raw')">Raw Text</button>
+            </div>
+          </div>
+          <div class="response-bd">
+            <div id="sectionsView" class="sections-view active"></div>
+            <div id="rawView" class="raw-view">Your answer will appear here.</div>
+            <div class="meta-grid">
+              <div>Tool</div><div id="toolName">—</div>
+              <div>Arguments</div><div id="toolArgs"><span class="code">—</span></div>
+            </div>
+          </div>
+        </section>
+      </main>
 
-<script>
-async function ask(){
-  const q=document.getElementById('q').value;
-  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q})});
-  const data=await res.json();
+      <aside class="panel">
+        <div class="inspector-header">
+          <div class="eyebrow">Live Inspector</div>
+          <div class="inspector-title" id="inspectorTitle">No selection yet</div>
+          <div class="inspector-sub" id="inspectorSub">Select a capability, schema, or endpoint to inspect details without replacing the main response.</div>
+        </div>
+        <div class="inspector-body">
+          <div class="right-group"><div class="eyebrow">Business Capabilities</div><div id="capabilityCards"><div class="inspector-empty">Capability cards will appear here.</div></div></div>
+          <div class="right-group"><div class="eyebrow">Workflow Map</div><div id="workflowMap"><div class="inspector-empty">Workflow steps will appear here.</div></div></div>
+          <div class="right-group"><div class="eyebrow">Explore Next</div><div id="exploreNext"><div class="inspector-empty">No follow-up actions yet.</div></div></div>
+          <div class="right-group"><div class="eyebrow">Schemas</div><div id="schemaCards"><div class="inspector-empty">Schemas will appear here.</div></div></div>
+          <div class="right-group"><div class="eyebrow">Endpoints</div><div id="endpointCards"><div class="inspector-empty">Endpoints will appear here.</div></div></div>
+        </div>
+      </aside>
+    </div>
+  </div>
 
-  document.getElementById('a').innerText=data.answer||'';
+  <div id="schemaModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-top"><div class="modal-title" id="modalTitle">Schema Details</div><button class="close-btn" onclick="closeSchemaModal()">Close</button></div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
 
-  const c=document.getElementById('cards');
-  c.innerHTML='';
-  (data.capability_cards||[]).forEach(x=>{
-    const b=document.createElement('button');
-    b.innerText=x.title;
-    b.onclick=()=>{document.getElementById('q').value=x.prompt};
-    c.appendChild(b);
-  });
-}
-</script>
+  <script>
+    let lastRawAnswer = '';
 
+    function setStatus(text, isError = false) {
+      const el = document.getElementById('status');
+      el.textContent = text || '';
+      el.style.color = isError ? '#ff9e9e' : '#9fb0cf';
+    }
+    function setLoading(loading) {
+      document.getElementById('sendBtn').disabled = loading;
+      document.getElementById('thinking').classList.toggle('active', loading);
+    }
+    function setInspector(title, sub) {
+      document.getElementById('inspectorTitle').textContent = title || 'No selection yet';
+      document.getElementById('inspectorSub').textContent = sub || 'Select a capability, schema, or endpoint to inspect details without replacing the main response.';
+    }
+    function ask(text) {
+      document.getElementById('prompt').value = text;
+      send();
+    }
+    function clearAll() {
+      document.getElementById('prompt').value = '';
+      document.getElementById('sectionsView').innerHTML = '';
+      document.getElementById('rawView').textContent = 'Your answer will appear here.';
+      document.getElementById('capabilityCards').innerHTML = '<div class="inspector-empty">Capability cards will appear here.</div>';
+      document.getElementById('exploreNext').innerHTML = '<div class="inspector-empty">No follow-up actions yet.</div>';
+      document.getElementById('schemaCards').innerHTML = '<div class="inspector-empty">Schemas will appear here.</div>';
+      document.getElementById('endpointCards').innerHTML = '<div class="inspector-empty">Endpoints will appear here.</div>';
+      document.getElementById('workflowMap').innerHTML = '<div class="inspector-empty">Workflow steps will appear here.</div>';
+      document.getElementById('toolName').textContent = '—';
+      document.getElementById('toolArgs').innerHTML = '<span class="code">—</span>';
+      setInspector();
+      setStatus('');
+    }
+    function copyAnswer() {
+      navigator.clipboard.writeText(lastRawAnswer || '').then(() => setStatus('Answer copied.')).catch(() => setStatus('Copy failed.', true));
+    }
+    function showView(view) {
+      document.getElementById('sectionsView').classList.toggle('active', view === 'sections');
+      document.getElementById('rawView').classList.toggle('active', view === 'raw');
+      document.getElementById('sectionsTab').classList.toggle('active', view === 'sections');
+      document.getElementById('rawTab').classList.toggle('active', view === 'raw');
+    }
+    function escapeHtml(text) {
+      return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function formatSectionBody(text) {
+      return escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    }
+    function renderSections(sections, rawAnswer) {
+      const container = document.getElementById('sectionsView');
+      container.innerHTML = '';
+      const data = Array.isArray(sections) && sections.length ? sections : [{ title: 'Overview', body: rawAnswer || '' }];
+      data.forEach((section) => {
+        const card = document.createElement('div');
+        card.className = 'section-card';
+        card.innerHTML = '<div class="section-title">' + escapeHtml(section.title || 'Overview') + '</div><div class="section-body">' + formatSectionBody(section.body || '') + '</div>';
+        container.appendChild(card);
+      });
+    }
+    function renderStringCards(containerId, items, className) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      if (!items || !items.length) {
+        container.innerHTML = '<div class="inspector-empty">Nothing to show yet.</div>';
+        return;
+      }
+      items.forEach((item) => {
+        const btn = document.createElement('button');
+        btn.className = className;
+        btn.textContent = item;
+        btn.onclick = () => ask(item);
+        container.appendChild(btn);
+      });
+    }
+    function renderObjectCards(containerId, items, className, onClick) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      if (!items || !items.length) {
+        container.innerHTML = '<div class="inspector-empty">Nothing to show yet.</div>';
+        return;
+      }
+      items.forEach((item) => {
+        const btn = document.createElement('button');
+        btn.className = className;
+        const titleClass = className === 'capability-card' ? 'capability-title' : className === 'schema-card' ? 'schema-title' : className === 'workflow-card' ? 'workflow-title' : 'endpoint-title';
+        const metaClass = className === 'capability-card' ? 'capability-meta' : className === 'schema-card' ? 'schema-meta' : className === 'workflow-card' ? 'workflow-meta' : 'endpoint-meta';
+        btn.innerHTML = '<div class="' + titleClass + '">' + escapeHtml(item.title || item.step || '') + '</div><div class="' + metaClass + '">' + escapeHtml(item.description || item.detail || '') + '</div>';
+        btn.onclick = () => onClick(item);
+        container.appendChild(btn);
+      });
+    }
+    async function fetchChat(message) {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+    async function openSchemaModal(schemaName) {
+      setInspector(schemaName, 'Schema inspection view');
+      const modal = document.getElementById('schemaModal');
+      const body = document.getElementById('modalBody');
+      document.getElementById('modalTitle').textContent = schemaName;
+      body.innerHTML = '<div class="section-card"><div class="section-title">Loading…</div><div class="section-body">Fetching schema details.</div></div>';
+      modal.classList.add('active');
+      try {
+        const data = await fetchChat('Show schema ' + schemaName);
+        body.innerHTML = '';
+        const sections = Array.isArray(data.sections) && data.sections.length ? data.sections : [{ title: 'Schema Details', body: data.answer || '' }];
+        sections.forEach((section) => {
+          const card = document.createElement('div');
+          card.className = 'section-card';
+          card.innerHTML = '<div class="section-title">' + escapeHtml(section.title || 'Details') + '</div><div class="section-body">' + formatSectionBody(section.body || '') + '</div>';
+          body.appendChild(card);
+        });
+      } catch (err) {
+        body.innerHTML = '<div class="section-card"><div class="section-title">Error</div><div class="section-body">' + escapeHtml(err.message || String(err)) + '</div></div>';
+      }
+    }
+    function closeSchemaModal() {
+      document.getElementById('schemaModal').classList.remove('active');
+    }
+    function renderWorkflowMap(items) {
+      renderObjectCards('workflowMap', items || [], 'workflow-card', (item) => {
+        const prompt = item.prompt || item.step || '';
+        if (prompt) ask(prompt);
+      });
+    }
+    async function send() {
+      const message = document.getElementById('prompt').value.trim();
+      if (!message) {
+        setStatus('Please enter a prompt.', true);
+        return;
+      }
+      setLoading(true);
+      setStatus('Thinking...');
+      document.getElementById('sectionsView').innerHTML = '';
+      document.getElementById('rawView').textContent = '';
+      try {
+        const data = await fetchChat(message);
+        lastRawAnswer = data.answer || '';
+        document.getElementById('rawView').textContent = lastRawAnswer;
+        renderSections(data.sections || [], data.answer || '');
+        document.getElementById('toolName').textContent = data.tool_name || '—';
+        document.getElementById('toolArgs').innerHTML = '<span class="code">' + escapeHtml(JSON.stringify(data.tool_arguments || {})) + '</span>';
+        renderObjectCards('capabilityCards', data.capability_cards || [], 'capability-card', (item) => ask(item.prompt || item.title || ''));
+        renderWorkflowMap(data.workflow_map || []);
+        renderStringCards('exploreNext', data.explore_next || [], 'action-card');
+        renderObjectCards('schemaCards', data.schema_cards || [], 'schema-card', (item) => openSchemaModal(item.title || ''));
+        renderObjectCards('endpointCards', data.endpoint_cards || [], 'endpoint-card', (item) => ask(item.prompt || item.title || ''));
+        renderStringCards('executivePrompts', [
+          'Give me an executive overview of the Appointment API',
+          'Give me an executive overview of the Multi-Point Inspection API',
+          'Compare the Appointment API and the Multi-Point Inspection API',
+          'Show me the business capabilities of the Multi-Point Inspection API for a dealership service advisor',
+          'Explain how the Appointment API fits into the dealer service journey'
+        ], 'play-card');
+        setInspector(data.tool_name || 'Result loaded', 'Inspector content updated from the latest response.');
+        setStatus('Done.');
+      } catch (err) {
+        document.getElementById('rawView').textContent = 'Error: ' + (err.message || String(err));
+        renderSections([{ title: 'Error', body: err.message || String(err) }], '');
+        setStatus('Request failed.', true);
+      } finally {
+        setLoading(false);
+      }
+    }
+    document.getElementById('prompt').addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') send();
+    });
+    renderStringCards('executivePrompts', [
+      'Give me an executive overview of the Appointment API',
+      'Give me an executive overview of the Multi-Point Inspection API',
+      'Compare the Appointment API and the Multi-Point Inspection API',
+      'Show me the business capabilities of the Multi-Point Inspection API for a dealership service advisor',
+      'Explain how the Appointment API fits into the dealer service journey'
+    ], 'play-card');
+  </script>
 </body>
 </html>

@@ -46,6 +46,34 @@ async function withTimeout(promise, ms, label = 'Operation') {
 
 let id = 1;
 
+function parseMcpResponse(text, contentType = '') {
+  const trimmed = String(text || '').trim();
+
+  if (!trimmed) {
+    throw new Error('Empty MCP response');
+  }
+
+  if (contentType.includes('application/json') && trimmed.startsWith('{')) {
+    return JSON.parse(trimmed);
+  }
+
+  if (trimmed.startsWith('{')) {
+    return JSON.parse(trimmed);
+  }
+
+  const dataLines = trimmed
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.replace(/^data:\s*/, '').trim())
+    .filter(Boolean);
+
+  if (!dataLines.length) {
+    throw new Error(`Invalid MCP response: ${trimmed}`);
+  }
+
+  return JSON.parse(dataLines[dataLines.length - 1]);
+}
+
 async function callMcp(method, params = {}) {
   if (!MCP_SERVER_URL) {
     throw new Error('Missing MCP_SERVER_URL');
@@ -65,34 +93,22 @@ async function callMcp(method, params = {}) {
         params
       })
     }),
-    12000,
+    30000,
     `MCP ${method} request`
   );
 
   const contentType = response.headers.get('content-type') || '';
-  const text = await withTimeout(response.text(), 8000, `MCP ${method} body read`);
+  const text = await withTimeout(
+    response.text(),
+    15000,
+    `MCP ${method} body read`
+  );
 
   if (!response.ok) {
     throw new Error(`MCP ${method} failed: ${text}`);
   }
 
-  let parsed;
-
-  if (contentType.includes('application/json') && text.trim().startsWith('{')) {
-    parsed = JSON.parse(text);
-  } else {
-    const dataLines = text
-      .split('\n')
-      .filter((line) => line.startsWith('data:'))
-      .map((line) => line.replace(/^data:\s*/, '').trim())
-      .filter(Boolean);
-
-    if (!dataLines.length) {
-      throw new Error(`Invalid MCP response for ${method}: ${text}`);
-    }
-
-    parsed = JSON.parse(dataLines[dataLines.length - 1]);
-  }
+  const parsed = parseMcpResponse(text, contentType);
 
   if (parsed.error) {
     throw new Error(`MCP ${method} error: ${JSON.stringify(parsed.error)}`);
@@ -102,7 +118,10 @@ async function callMcp(method, params = {}) {
 }
 
 async function tool(name, args = {}) {
-  return callMcp('tools/call', { name, arguments: args });
+  return callMcp('tools/call', {
+    name,
+    arguments: args
+  });
 }
 
 /* ---------- SIMPLE CACHE ---------- */
@@ -132,18 +151,33 @@ async function toolCached(name, args = {}) {
 
 function detectDomain(message = '') {
   const m = String(message).toLowerCase();
-  if (m.includes('inspection') || m.includes('mpi')) return 'multi-point-inspection';
-  if (m.includes('appointment')) return 'appointment';
+
+  if (
+    m.includes('multi-point-inspection') ||
+    m.includes('multi point inspection') ||
+    m.includes('inspection') ||
+    m.includes('mpi')
+  ) {
+    return 'multi-point-inspection';
+  }
+
+  if (m.includes('appointment')) {
+    return 'appointment';
+  }
+
   return null;
 }
 
 function wantsCapabilities(message = '') {
   const m = String(message).toLowerCase();
+
   return (
     m.includes('capabilities') ||
     m.includes('business capabilities') ||
     m.includes('service advisor') ||
-    m.includes('service lane')
+    m.includes('service lane') ||
+    m.includes('advisor-facing') ||
+    m.includes('daily workflow')
   );
 }
 
@@ -155,15 +189,95 @@ function safeParseJson(text) {
   }
 }
 
-function extractCapabilityIdentifier(op) {
-  return op?.operationId || op?.identifier || '';
-}
-
 function extractOperations(opsResult) {
   return opsResult?.operations || opsResult?.structuredContent?.operations || [];
 }
 
-function fallbackCapabilityCards(domain, opsResult) {
+function extractCapabilityIdentifier(op) {
+  return op?.operationId || op?.identifier || '';
+}
+
+function extractSections(answer) {
+  const text = String(answer || '').trim();
+  if (!text) return [];
+
+  const lines = text.split('\n');
+  const sections = [];
+  let current = null;
+
+  const isHeader = (line) =>
+    /^\s*\d+\.\s+/.test(line) ||
+    /^\s*[A-Z][A-Za-z0-9 /&()-]{2,}:\s*$/.test(line);
+
+  for (const raw of lines) {
+    const line = raw.trim();
+
+    if (!line) {
+      if (current) current.body.push('');
+      continue;
+    }
+
+    if (isHeader(line)) {
+      if (current) sections.push(current);
+      current = { title: line.replace(/:\s*$/, ''), body: [] };
+    } else {
+      if (!current) current = { title: 'Overview', body: [] };
+      current.body.push(line);
+    }
+  }
+
+  if (current) sections.push(current);
+
+  return sections
+    .map((s) => ({
+      title: s.title,
+      body: s.body.join('\n').trim()
+    }))
+    .filter((s) => s.title || s.body);
+}
+
+function fallbackCapabilityCards(domain) {
+  return [
+    {
+      title: 'Start inspection workflow',
+      description: 'Begin or launch the inspection process tied to service intake.',
+      identifier: '',
+      prompt: `Explain how to start the inspection workflow in the ${domain} API for a dealership service advisor`
+    },
+    {
+      title: 'Track inspection progress',
+      description: 'Monitor inspection state and advisor-facing workflow progress.',
+      identifier: '',
+      prompt: `Explain how to track inspection progress in the ${domain} API for a dealership service advisor`
+    },
+    {
+      title: 'Review findings and media',
+      description: 'Understand technician findings, notes, and media in the service lane.',
+      identifier: '',
+      prompt: `Explain how to review findings and media in the ${domain} API for a dealership service advisor`
+    },
+    {
+      title: 'Prepare recommendations',
+      description: 'Build service recommendations and communicate next steps.',
+      identifier: '',
+      prompt: `Explain how to prepare recommendations in the ${domain} API for a dealership service advisor`
+    },
+    {
+      title: 'Capture customer approval',
+      description: 'Handle approval workflow and advisor-to-customer communication.',
+      identifier: '',
+      prompt: `Explain how customer approval works in the ${domain} API for a dealership service advisor`
+    },
+    {
+      title: 'Close and publish results',
+      description: 'Finish the workflow and share results with internal teams or customers.',
+      identifier: '',
+      prompt: `Explain how to close and publish results in the ${domain} API for a dealership service advisor`
+    }
+  ];
+}
+
+function operationBasedCapabilityCards(domain, opsResult) {
   const operations = extractOperations(opsResult);
 
   return operations.slice(0, 6).map((op) => {
@@ -193,16 +307,28 @@ function fallbackCapabilityCards(domain, opsResult) {
 /* ---------- CAPABILITY MODE ---------- */
 
 async function buildCapabilities(domain) {
-  const ops = await toolCached('listOperations', {
-    domain_name: domain,
-    limit: 25
-  });
+  let ops;
+
+  try {
+    ops = await toolCached('listOperations', {
+      domain_name: domain,
+      limit: 10
+    });
+  } catch (err) {
+    console.warn('listOperations fallback:', err.message);
+
+    return {
+      answer: `The ${domain} API is responding slowly right now, so I could not build the full business capability map from operations. You can still continue with these starter capability paths.`,
+      capability_cards: fallbackCapabilityCards(domain)
+    };
+  }
 
   try {
     const response = await withTimeout(
       client.responses.create({
         model: MODEL,
         input: `Group these operations into business capabilities for a dealership service advisor in automotive retail.
+
 Return ONLY valid JSON in this shape:
 {
   "answer": "string",
@@ -241,7 +367,7 @@ ${JSON.stringify(ops)}`
 
     return {
       answer: `I found relevant operations for the ${domain} API. Select one of the business capabilities below to continue.`,
-      capability_cards: fallbackCapabilityCards(domain, ops)
+      capability_cards: operationBasedCapabilityCards(domain, ops)
     };
   }
 }
@@ -288,8 +414,10 @@ app.post('/api/chat', async (req, res) => {
 
     if (domain && wantsCapabilities(message)) {
       const nav = await buildCapabilities(domain);
+
       return res.json({
         answer: nav.answer,
+        sections: extractSections(nav.answer),
         capability_cards: nav.capability_cards,
         tool_name: 'business_capability_navigator',
         tool_arguments: { domain_name: domain }
@@ -315,6 +443,7 @@ Answer clearly and concisely in the context of STAR automotive APIs.`
 
     return res.json({
       answer: answer.output_text,
+      sections: extractSections(answer.output_text),
       capability_cards: [],
       tool_name: 'listDomains',
       tool_arguments: {}

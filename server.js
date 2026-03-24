@@ -145,7 +145,7 @@ async function toolCached(name, args = {}) {
 }
 
 /* --------------------------------------------------
- * DOMAIN HELPERS
+ * HELPERS
  * -------------------------------------------------- */
 
 function detectDomain(message = '') {
@@ -260,34 +260,91 @@ function extractSections(answer) {
 }
 
 /* --------------------------------------------------
- * STABLE BUILT-IN DOMAIN MAPS
- * Production-safe: core UX does not depend on MCP
+ * BUILT-IN DOMAIN INTELLIGENCE
  * -------------------------------------------------- */
 
 const DOMAIN_CONFIG = {
-  'appointment': {
+  appointment: {
     overview_blurb:
       'The Appointment API supports dealership service scheduling, intake coordination, and service-lane preparation.',
+    rich_overview: `1. What it is
+The Appointment API represents the dealership service scheduling and intake layer. It helps coordinate customer bookings, requested services, timing expectations, and operational readiness before the vehicle enters the service lane.
+
+2. Core concepts
+The API centers on the service appointment as the planning object that connects customer intent, vehicle context, dealership availability, and requested work. It provides the structure needed to align the front-end scheduling experience with dealership operations.
+
+3. Main resources
+Typical resources include the appointment itself, requested services, customer and vehicle references, timing details, and supporting status information needed by dealership systems.
+
+4. Typical workflow
+A customer books service, the dealership validates the request, the advisor or system confirms timing and service intent, and the service lane uses the appointment context to prepare intake and execution.
+
+5. What to explore next
+Look at business capabilities, representative endpoints, and schemas related to scheduling, intake, and service preparation.`,
     capability_cards: [
       {
         title: 'Schedule appointment',
         description: 'Create and manage service appointments for customers and vehicles.',
-        prompt: 'Explain how to schedule and manage appointments in the Appointment API for a dealership service advisor'
+        business_guidance:
+          'This capability covers the initial booking process. For a service advisor or dealership workflow owner, it represents the front door into service operations. It ensures that customer requests are captured with enough structure to support downstream preparation and execution.',
+        advisor_actions: [
+          'Review requested services and timing',
+          'Confirm customer and vehicle context',
+          'Make sure appointment data supports intake readiness'
+        ],
+        customer_impact:
+          'Customers get a clearer booking experience and more accurate service expectations.',
+        workflow_stage: 'Scheduling',
+        prompt:
+          'Explain how to schedule and manage appointments in the Appointment API for a dealership service advisor'
       },
       {
         title: 'Confirm service needs',
         description: 'Validate requested services, timing, and customer expectations.',
-        prompt: 'Explain how a service advisor confirms service needs using the Appointment API'
+        business_guidance:
+          'This capability helps the dealership turn a raw booking into an operationally useful service request. It is where the advisor validates what the customer wants, checks whether the request is complete, and aligns the appointment with dealership readiness.',
+        advisor_actions: [
+          'Validate requested work',
+          'Check timing and operational fit',
+          'Reduce ambiguity before service intake'
+        ],
+        customer_impact:
+          'Customers receive more accurate service planning and fewer surprises at intake.',
+        workflow_stage: 'Pre-intake validation',
+        prompt:
+          'Explain how a service advisor confirms service needs using the Appointment API'
       },
       {
         title: 'Prepare service lane',
         description: 'Use appointment context to prepare the dealership service workflow.',
-        prompt: 'Explain how the Appointment API helps prepare the service lane'
+        business_guidance:
+          'This capability connects the appointment to the dealership operating model. It helps the service lane prepare capacity, people, and expectations before the customer arrives.',
+        advisor_actions: [
+          'Review upcoming appointments',
+          'Use appointment data to prepare intake',
+          'Coordinate service-lane readiness'
+        ],
+        customer_impact:
+          'Customers experience smoother intake and better operational coordination.',
+        workflow_stage: 'Service preparation',
+        prompt:
+          'Explain how the Appointment API helps prepare the service lane'
       },
       {
         title: 'Coordinate customer communication',
         description: 'Support reminders, confirmations, and status coordination.',
-        prompt: 'Explain how customer communication is supported by the Appointment API'
+        business_guidance:
+          'This capability supports the communication layer around appointments. It helps the dealership align customer expectations before arrival and reduce missed or unclear service interactions.',
+        advisor_actions: [
+          'Confirm appointment context',
+          'Support reminders and updates',
+          'Align service expectations'
+        ],
+        customer_impact:
+          'Customers receive clearer communication and better appointment confidence.',
+        workflow_stage: 'Customer coordination',
+        prompt:
+          'Explain how customer communication is supported by the Appointment API'
       }
     ],
     workflow_map: [
@@ -308,66 +365,152 @@ const DOMAIN_CONFIG = {
       }
     ]
   },
+
   'multi-point-inspection': {
     overview_blurb:
       'The Multi-Point Inspection API supports the vehicle inspection lifecycle, from starting inspections through findings, recommendations, customer decisions, and completion.',
+    rich_overview: `1. What it is
+The Multi-Point Inspection API is a dealership service workflow domain that supports structured vehicle health checks. It covers the lifecycle from launching an inspection through technician findings, recommendations, customer decisions, and final completion.
+
+2. Core concepts
+The domain revolves around the inspection itself, what is being inspected, what was found, and what action should be recommended or approved. For dealership teams, it acts as the business structure that turns technician observations into advisor-facing guidance and customer decisions.
+
+3. Main resources
+Typical resources include the inspection record, findings, condition evidence, media, recommendations, approval outcomes, and workflow status. These objects help connect technical inspection work to customer-facing service decisions.
+
+4. Typical workflow
+An inspection is started from service intake or repair-order context. The technician records findings and supporting evidence. The advisor reviews the results, prepares recommendations, communicates with the customer, captures approvals or declines, and moves approved work into execution.
+
+5. What to explore next
+Review business capabilities, workflow stages, representative endpoints, and schemas related to findings, recommendations, approvals, and inspection completion.`,
     capability_cards: [
       {
         title: 'Start inspection workflow',
         description: 'Begin the MPI process from intake, appointment context, or repair-order workflow.',
-        prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API for a dealership service advisor'
+        business_guidance:
+          'This capability launches the inspection lifecycle. In dealership terms, it is the point where the vehicle moves from intake context into structured inspection activity. It gives technicians and advisors a common workflow anchor for inspection progress and results.',
+        advisor_actions: [
+          'Initiate inspection from service context',
+          'Ensure the inspection is tied to the right vehicle and visit',
+          'Use the inspection as the operational anchor for downstream findings'
+        ],
+        customer_impact:
+          'Customers benefit from a structured and traceable inspection process.',
+        workflow_stage: 'Inspection initiation',
+        prompt:
+          'Explain how to start the inspection workflow in the multi-point-inspection API for a dealership service advisor'
       },
       {
         title: 'Track inspection progress',
         description: 'Monitor inspection state, technician progress, and workflow status.',
-        prompt: 'Explain how to track inspection progress in the multi-point-inspection API for a dealership service advisor'
+        business_guidance:
+          'This capability gives advisors visibility into where the inspection stands. It matters operationally because advisors need to know when findings are available, whether the inspection is still in progress, and when they can begin customer-facing recommendation work.',
+        advisor_actions: [
+          'Monitor inspection lifecycle status',
+          'Coordinate timing between technician work and advisor communication',
+          'Use progress visibility to manage service-lane flow'
+        ],
+        customer_impact:
+          'Customers receive more timely updates and better expectation management.',
+        workflow_stage: 'Inspection monitoring',
+        prompt:
+          'Explain how to track inspection progress in the multi-point-inspection API for a dealership service advisor'
       },
       {
         title: 'Review findings and media',
         description: 'Review technician findings, notes, photos, and condition evidence.',
-        prompt: 'Explain how to review findings and media in the multi-point-inspection API for a dealership service advisor'
+        business_guidance:
+          'This capability is where raw technician observations become advisor-usable business information. Advisors need more than a status flag. They need findings, evidence, and context they can understand and communicate clearly.',
+        advisor_actions: [
+          'Review condition findings',
+          'Use media and notes as supporting evidence',
+          'Translate technical observations into customer-facing explanation'
+        ],
+        customer_impact:
+          'Customers receive clearer, evidence-based explanations of vehicle condition.',
+        workflow_stage: 'Findings review',
+        prompt:
+          'Explain how to review findings and media in the multi-point-inspection API for a dealership service advisor'
       },
       {
         title: 'Prepare recommendations',
         description: 'Turn findings into advisor-ready repair recommendations and next steps.',
-        prompt: 'Explain how to prepare recommendations in the multi-point-inspection API for a dealership service advisor'
+        business_guidance:
+          'This capability converts inspection results into action. It is where the advisor interprets findings, organizes recommended work, and prepares a customer-ready proposal tied to vehicle condition and service priorities.',
+        advisor_actions: [
+          'Turn findings into recommended work',
+          'Organize repair guidance by business relevance',
+          'Prepare customer-facing next steps'
+        ],
+        customer_impact:
+          'Customers receive clearer recommendations and understand why work is being proposed.',
+        workflow_stage: 'Recommendation building',
+        prompt:
+          'Explain how to prepare recommendations in the multi-point-inspection API for a dealership service advisor'
       },
       {
         title: 'Capture customer approval',
         description: 'Record customer decisions, approvals, and communication outcomes.',
-        prompt: 'Explain how customer approval works in the multi-point-inspection API for a dealership service advisor'
+        business_guidance:
+          'This capability captures the business outcome of the advisor-customer interaction. It is critical because inspection value is realized only when customer decisions are recorded clearly enough to drive execution, deferral, or closure.',
+        advisor_actions: [
+          'Record approvals and declines',
+          'Track customer communication outcomes',
+          'Use approval results to determine next workflow step'
+        ],
+        customer_impact:
+          'Customers experience a clearer decision process and better documentation of their choices.',
+        workflow_stage: 'Decision capture',
+        prompt:
+          'Explain how customer approval works in the multi-point-inspection API for a dealership service advisor'
       },
       {
         title: 'Close and publish results',
         description: 'Finalize the inspection and share outcomes with internal teams or the customer.',
-        prompt: 'Explain how to close and publish results in the multi-point-inspection API for a dealership service advisor'
+        business_guidance:
+          'This capability completes the inspection lifecycle. It ensures that inspection outcomes are finalized, available for operational follow-through, and usable by both internal dealership teams and customer communication flows.',
+        advisor_actions: [
+          'Finalize inspection outcomes',
+          'Publish or share results where needed',
+          'Close the loop between inspection, approval, and execution'
+        ],
+        customer_impact:
+          'Customers receive a clearer completed inspection story and documented results.',
+        workflow_stage: 'Inspection completion',
+        prompt:
+          'Explain how to close and publish results in the multi-point-inspection API for a dealership service advisor'
       }
     ],
     workflow_map: [
       {
         step: 'Start inspection',
         detail: 'Launch MPI workflow tied to intake or RO context',
-        prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API for a dealership service advisor'
+        prompt:
+          'Explain how to start the inspection workflow in the multi-point-inspection API for a dealership service advisor'
       },
       {
         step: 'Capture findings',
         detail: 'Technician records results, notes, and media',
-        prompt: 'Explain how findings are captured in the multi-point-inspection API'
+        prompt:
+          'Explain how findings are captured in the multi-point-inspection API'
       },
       {
         step: 'Build recommendations',
         detail: 'Advisor prepares customer-facing repair guidance',
-        prompt: 'Explain how recommendations are built in the multi-point-inspection API'
+        prompt:
+          'Explain how recommendations are built in the multi-point-inspection API'
       },
       {
         step: 'Get approval',
         detail: 'Customer decisions are captured and tracked',
-        prompt: 'Explain customer approval flow in the multi-point-inspection API'
+        prompt:
+          'Explain customer approval flow in the multi-point-inspection API'
       },
       {
         step: 'Move to execution',
         detail: 'Approved work moves into repair-order workflow',
-        prompt: 'Explain how approved work moves into execution from the multi-point-inspection API'
+        prompt:
+          'Explain how approved work moves into execution from the multi-point-inspection API'
       }
     ]
   }
@@ -381,13 +524,25 @@ function getBuiltInWorkflowMap(domain) {
   return DOMAIN_CONFIG[domain]?.workflow_map || [];
 }
 
-function getBuiltInOverviewBlurb(domain) {
-  return DOMAIN_CONFIG[domain]?.overview_blurb || 'This API supports dealership workflow operations.';
+function getBuiltInRichOverview(domain) {
+  return DOMAIN_CONFIG[domain]?.rich_overview || `1. What it is
+This API supports dealership workflow operations.
+
+2. Core concepts
+It provides structured business data and workflow coordination.
+
+3. Main resources
+Use schemas, endpoints, and business capabilities to understand the domain.
+
+4. Typical workflow
+Use the workflow map to understand how this API supports operations.
+
+5. What to explore next
+Inspect capabilities, schemas, and endpoints.`;
 }
 
 /* --------------------------------------------------
- * MCP ENRICHMENT
- * Optional: enrich responses, never block core UX
+ * SAFE MCP ENRICHMENT
  * -------------------------------------------------- */
 
 async function safeListSchemas(domain, limit = 6) {
@@ -446,18 +601,18 @@ async function buildCapabilityResponse(domain) {
   const endpointCards = deriveEndpointCards(ops, domain);
   const schemaCards = deriveSchemaCards(schemas, domain);
 
-  const answer = `Business capabilities for the ${domain} API are shown below. These capabilities are organized around the dealership workflow and remain available even when live MCP enrichment is slow.`;
+  const answer = `1. Direct answer
+Business capabilities for the ${domain} API are shown below.
+
+2. Key details
+These capabilities are organized around the dealership workflow and include advisor-facing business meaning, workflow stage, customer impact, and recommended next actions.
+
+3. Useful next steps
+Select a capability card to go deeper into business guidance, advisor actions, and related technical context.`;
 
   return {
     answer,
-    sections: extractSections(`1. Direct answer
-${answer}
-
-2. Key details
-These capabilities reflect the business flow that dealership teams care about first.
-
-3. Useful next steps
-Select a capability card to go deeper into advisor-facing usage.`),
+    sections: extractSections(answer),
     capability_cards: builtInCards,
     endpoint_cards: endpointCards,
     schema_cards: schemaCards,
@@ -473,7 +628,7 @@ async function buildOverviewResponse(domain, message) {
     safeListSchemas(domain, 8)
   ]);
 
-  const baseBlurb = getBuiltInOverviewBlurb(domain);
+  const builtInOverview = getBuiltInRichOverview(domain);
 
   let answer;
   try {
@@ -487,8 +642,8 @@ The multi-point-inspection API means vehicle inspection workflow.
 User request:
 ${message}
 
-Built-in context:
-${baseBlurb}
+Built-in domain overview:
+${builtInOverview}
 
 MCP overview:
 ${JSON.stringify(overview)}
@@ -499,12 +654,7 @@ ${JSON.stringify(ops)}
 Schemas:
 ${JSON.stringify(schemas)}
 
-Write a structured answer with:
-1. What it is
-2. Core concepts
-3. Main resources
-4. Typical workflow
-5. What to explore next`
+Write a rich structured answer that preserves the depth of the built-in domain overview while using MCP data to enrich it where possible.`
       }),
       10000,
       'OpenAI overview generation'
@@ -512,20 +662,7 @@ Write a structured answer with:
 
     answer = response.output_text;
   } catch {
-    answer = `1. What it is
-${baseBlurb}
-
-2. Core concepts
-This API supports dealership workflow coordination and structured business data exchange.
-
-3. Main resources
-Use the inspector on the right to explore capabilities, schemas, and endpoints.
-
-4. Typical workflow
-Follow the workflow map to understand how this API supports dealer operations.
-
-5. What to explore next
-Use the business capability view, schemas, and endpoints for deeper inspection.`;
+    answer = builtInOverview;
   }
 
   return {
@@ -775,5 +912,5 @@ Answer clearly and concisely in the context of STAR automotive APIs.`
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`STAR production-ready server running on ${PORT}`);
+  console.log(`STAR matched-pair server running on ${PORT}`);
 });

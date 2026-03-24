@@ -21,7 +21,9 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-/* ---------- TIMEOUT ---------- */
+/* --------------------------------------------------
+ * TIMEOUTS
+ * -------------------------------------------------- */
 
 async function withTimeout(promise, ms, label = 'Operation') {
   let timer;
@@ -36,7 +38,9 @@ async function withTimeout(promise, ms, label = 'Operation') {
   }
 }
 
-/* ---------- MCP ---------- */
+/* --------------------------------------------------
+ * MCP
+ * -------------------------------------------------- */
 
 let rpcId = 1;
 
@@ -66,6 +70,10 @@ function parseMcpResponse(text, contentType = '') {
 }
 
 async function callMcp(method, params = {}) {
+  if (!MCP_SERVER_URL) {
+    throw new Error('Missing MCP_SERVER_URL');
+  }
+
   const response = await withTimeout(
     fetch(MCP_SERVER_URL, {
       method: 'POST',
@@ -80,14 +88,14 @@ async function callMcp(method, params = {}) {
         params
       })
     }),
-    30000,
+    20000,
     `MCP ${method} request`
   );
 
   const contentType = response.headers.get('content-type') || '';
   const text = await withTimeout(
     response.text(),
-    15000,
+    10000,
     `MCP ${method} body read`
   );
 
@@ -111,7 +119,9 @@ async function tool(name, args = {}) {
   });
 }
 
-/* ---------- CACHE ---------- */
+/* --------------------------------------------------
+ * CACHE
+ * -------------------------------------------------- */
 
 const cache = new Map();
 const CACHE_MS = 5 * 60 * 1000;
@@ -134,7 +144,9 @@ async function toolCached(name, args = {}) {
   return value;
 }
 
-/* ---------- HELPERS ---------- */
+/* --------------------------------------------------
+ * DOMAIN HELPERS
+ * -------------------------------------------------- */
 
 function detectDomain(message = '') {
   const m = String(message).toLowerCase();
@@ -179,6 +191,22 @@ function wantsOverview(message = '') {
   );
 }
 
+function wantsSchemas(message = '') {
+  return String(message).toLowerCase().includes('schema');
+}
+
+function wantsEndpoints(message = '') {
+  const m = String(message).toLowerCase();
+  return (
+    m.includes('endpoint') ||
+    m.includes('endpoints') ||
+    m.includes('operation') ||
+    m.includes('operations') ||
+    m.includes('url') ||
+    m.includes('path')
+  );
+}
+
 function safeParseJson(text) {
   try {
     return JSON.parse(text);
@@ -193,10 +221,6 @@ function extractOperations(result) {
 
 function extractSchemas(result) {
   return result?.schemas || result?.structuredContent?.schemas || [];
-}
-
-function extractCapabilityIdentifier(op) {
-  return op?.operationId || op?.identifier || '';
 }
 
 function extractSections(answer) {
@@ -235,6 +259,161 @@ function extractSections(answer) {
     .filter((s) => s.title || s.body);
 }
 
+/* --------------------------------------------------
+ * STABLE BUILT-IN DOMAIN MAPS
+ * Production-safe: core UX does not depend on MCP
+ * -------------------------------------------------- */
+
+const DOMAIN_CONFIG = {
+  'appointment': {
+    overview_blurb:
+      'The Appointment API supports dealership service scheduling, intake coordination, and service-lane preparation.',
+    capability_cards: [
+      {
+        title: 'Schedule appointment',
+        description: 'Create and manage service appointments for customers and vehicles.',
+        prompt: 'Explain how to schedule and manage appointments in the Appointment API for a dealership service advisor'
+      },
+      {
+        title: 'Confirm service needs',
+        description: 'Validate requested services, timing, and customer expectations.',
+        prompt: 'Explain how a service advisor confirms service needs using the Appointment API'
+      },
+      {
+        title: 'Prepare service lane',
+        description: 'Use appointment context to prepare the dealership service workflow.',
+        prompt: 'Explain how the Appointment API helps prepare the service lane'
+      },
+      {
+        title: 'Coordinate customer communication',
+        description: 'Support reminders, confirmations, and status coordination.',
+        prompt: 'Explain how customer communication is supported by the Appointment API'
+      }
+    ],
+    workflow_map: [
+      {
+        step: 'Schedule appointment',
+        detail: 'Customer booking and advisor intake',
+        prompt: 'Explain the scheduling flow of the Appointment API'
+      },
+      {
+        step: 'Confirm service needs',
+        detail: 'Advisor validates request and timing',
+        prompt: 'Explain advisor validation workflow in the Appointment API'
+      },
+      {
+        step: 'Prepare service lane',
+        detail: 'Appointment data supports dealer operations',
+        prompt: 'Explain how the Appointment API supports service-lane preparation'
+      }
+    ]
+  },
+  'multi-point-inspection': {
+    overview_blurb:
+      'The Multi-Point Inspection API supports the vehicle inspection lifecycle, from starting inspections through findings, recommendations, customer decisions, and completion.',
+    capability_cards: [
+      {
+        title: 'Start inspection workflow',
+        description: 'Begin the MPI process from intake, appointment context, or repair-order workflow.',
+        prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API for a dealership service advisor'
+      },
+      {
+        title: 'Track inspection progress',
+        description: 'Monitor inspection state, technician progress, and workflow status.',
+        prompt: 'Explain how to track inspection progress in the multi-point-inspection API for a dealership service advisor'
+      },
+      {
+        title: 'Review findings and media',
+        description: 'Review technician findings, notes, photos, and condition evidence.',
+        prompt: 'Explain how to review findings and media in the multi-point-inspection API for a dealership service advisor'
+      },
+      {
+        title: 'Prepare recommendations',
+        description: 'Turn findings into advisor-ready repair recommendations and next steps.',
+        prompt: 'Explain how to prepare recommendations in the multi-point-inspection API for a dealership service advisor'
+      },
+      {
+        title: 'Capture customer approval',
+        description: 'Record customer decisions, approvals, and communication outcomes.',
+        prompt: 'Explain how customer approval works in the multi-point-inspection API for a dealership service advisor'
+      },
+      {
+        title: 'Close and publish results',
+        description: 'Finalize the inspection and share outcomes with internal teams or the customer.',
+        prompt: 'Explain how to close and publish results in the multi-point-inspection API for a dealership service advisor'
+      }
+    ],
+    workflow_map: [
+      {
+        step: 'Start inspection',
+        detail: 'Launch MPI workflow tied to intake or RO context',
+        prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API for a dealership service advisor'
+      },
+      {
+        step: 'Capture findings',
+        detail: 'Technician records results, notes, and media',
+        prompt: 'Explain how findings are captured in the multi-point-inspection API'
+      },
+      {
+        step: 'Build recommendations',
+        detail: 'Advisor prepares customer-facing repair guidance',
+        prompt: 'Explain how recommendations are built in the multi-point-inspection API'
+      },
+      {
+        step: 'Get approval',
+        detail: 'Customer decisions are captured and tracked',
+        prompt: 'Explain customer approval flow in the multi-point-inspection API'
+      },
+      {
+        step: 'Move to execution',
+        detail: 'Approved work moves into repair-order workflow',
+        prompt: 'Explain how approved work moves into execution from the multi-point-inspection API'
+      }
+    ]
+  }
+};
+
+function getBuiltInCapabilityCards(domain) {
+  return DOMAIN_CONFIG[domain]?.capability_cards || [];
+}
+
+function getBuiltInWorkflowMap(domain) {
+  return DOMAIN_CONFIG[domain]?.workflow_map || [];
+}
+
+function getBuiltInOverviewBlurb(domain) {
+  return DOMAIN_CONFIG[domain]?.overview_blurb || 'This API supports dealership workflow operations.';
+}
+
+/* --------------------------------------------------
+ * MCP ENRICHMENT
+ * Optional: enrich responses, never block core UX
+ * -------------------------------------------------- */
+
+async function safeListSchemas(domain, limit = 6) {
+  try {
+    return await toolCached('listSchemas', { domain_name: domain, limit });
+  } catch {
+    return { schemas: [] };
+  }
+}
+
+async function safeListOperations(domain, limit = 6) {
+  try {
+    return await toolCached('listOperations', { domain_name: domain, limit });
+  } catch {
+    return { operations: [] };
+  }
+}
+
+async function safeGetOverview(domain) {
+  try {
+    return await toolCached('getApiOverview', { domain_name: domain });
+  } catch {
+    return null;
+  }
+}
+
 function deriveEndpointCards(result, domain) {
   return extractOperations(result).slice(0, 6).map((op) => ({
     title: `${op.method || 'GET'} ${op.path || ''}`.trim(),
@@ -251,221 +430,67 @@ function deriveSchemaCards(result, domain) {
   }));
 }
 
-function defaultCapabilityCards(domain) {
-  return [
-    {
-      title: 'Start inspection workflow',
-      description: 'Begin or launch the inspection process tied to service intake.',
-      prompt: `Explain how to start the inspection workflow in the ${domain} API for a dealership service advisor`
-    },
-    {
-      title: 'Track inspection progress',
-      description: 'Monitor inspection state and advisor-facing workflow progress.',
-      prompt: `Explain how to track inspection progress in the ${domain} API for a dealership service advisor`
-    },
-    {
-      title: 'Review findings and media',
-      description: 'Understand technician findings, notes, and media in the service lane.',
-      prompt: `Explain how to review findings and media in the ${domain} API for a dealership service advisor`
-    },
-    {
-      title: 'Prepare recommendations',
-      description: 'Build service recommendations and communicate next steps.',
-      prompt: `Explain how to prepare recommendations in the ${domain} API for a dealership service advisor`
-    },
-    {
-      title: 'Capture customer approval',
-      description: 'Handle approval workflow and advisor-to-customer communication.',
-      prompt: `Explain how customer approval works in the ${domain} API for a dealership service advisor`
-    },
-    {
-      title: 'Close and publish results',
-      description: 'Finish the workflow and share results with internal teams or customers.',
-      prompt: `Explain how to close and publish results in the ${domain} API for a dealership service advisor`
-    }
-  ];
-}
+/* --------------------------------------------------
+ * RESPONSE BUILDERS
+ * -------------------------------------------------- */
 
-function operationBasedCapabilityCards(domain, opsResult) {
-  return extractOperations(opsResult).slice(0, 5).map((op) => {
-    const identifier = extractCapabilityIdentifier(op);
-    const title =
-      op.summary ||
-      identifier ||
-      `${op.method || 'GET'} ${op.path || ''}`.trim() ||
-      'Capability';
+async function buildCapabilityResponse(domain) {
+  const builtInCards = getBuiltInCapabilityCards(domain);
+  const workflowMap = getBuiltInWorkflowMap(domain);
 
-    const description =
-      op.description ||
-      `${op.method || 'GET'} ${op.path || ''}`.trim() ||
-      'Business capability';
+  const [ops, schemas] = await Promise.all([
+    safeListOperations(domain, 5),
+    safeListSchemas(domain, 5)
+  ]);
 
-    return {
-      title,
-      description,
-      identifier,
-      prompt: identifier
-        ? `Explain business use of ${identifier} for a dealership service advisor in the ${domain} API`
-        : `Explain ${title} for a dealership service advisor in the ${domain} API`
-    };
-  });
-}
+  const endpointCards = deriveEndpointCards(ops, domain);
+  const schemaCards = deriveSchemaCards(schemas, domain);
 
-function defaultWorkflowMap(domain) {
-  if (domain === 'appointment') {
-    return [
-      {
-        step: 'Schedule appointment',
-        detail: 'Customer booking and advisor intake',
-        prompt: 'Explain the scheduling flow of the Appointment API'
-      },
-      {
-        step: 'Confirm service needs',
-        detail: 'Advisor validates request and timing',
-        prompt: 'Explain advisor validation workflow in the Appointment API'
-      },
-      {
-        step: 'Prepare service lane',
-        detail: 'Appointment data supports dealer operations',
-        prompt: 'Explain how the Appointment API supports service-lane preparation'
-      }
-    ];
-  }
+  const answer = `Business capabilities for the ${domain} API are shown below. These capabilities are organized around the dealership workflow and remain available even when live MCP enrichment is slow.`;
 
-  return [
-    {
-      step: 'Start inspection',
-      detail: 'Launch MPI workflow tied to intake or RO context',
-      prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API for a dealership service advisor'
-    },
-    {
-      step: 'Capture findings',
-      detail: 'Technician records results, notes, and media',
-      prompt: 'Explain how findings are captured in the multi-point-inspection API'
-    },
-    {
-      step: 'Build recommendations',
-      detail: 'Advisor prepares customer-facing repair guidance',
-      prompt: 'Explain how recommendations are built in the multi-point-inspection API'
-    },
-    {
-      step: 'Get approval',
-      detail: 'Customer decisions are captured and tracked',
-      prompt: 'Explain customer approval flow in the multi-point-inspection API'
-    },
-    {
-      step: 'Move to execution',
-      detail: 'Approved work moves into repair-order workflow',
-      prompt: 'Explain how approved work moves into execution from the multi-point-inspection API'
-    }
-  ];
-}
-
-/* ---------- V5.1 PROGRESSIVE CAPABILITIES ---------- */
-
-async function buildCapabilities(domain) {
-  const starter = {
-    answer: `Loading business capabilities for the ${domain} API. If live operations are slow, starter capability paths are shown first.`,
+  return {
+    answer,
     sections: extractSections(`1. Direct answer
-Loading business capabilities for the ${domain} API.
+${answer}
 
-2. Useful next steps
-Starter capabilities are shown immediately while live operations are attempted in the background flow.`),
-    capability_cards: defaultCapabilityCards(domain),
-    endpoint_cards: [],
-    schema_cards: [],
-    workflow_map: defaultWorkflowMap(domain),
-    progressive: true
+2. Key details
+These capabilities reflect the business flow that dealership teams care about first.
+
+3. Useful next steps
+Select a capability card to go deeper into advisor-facing usage.`),
+    capability_cards: builtInCards,
+    endpoint_cards: endpointCards,
+    schema_cards: schemaCards,
+    workflow_map: workflowMap,
+    progressive: endpointCards.length === 0 && schemaCards.length === 0
   };
+}
 
-  let ops;
-  try {
-    ops = await toolCached('listOperations', { domain_name: domain, limit: 5 });
-  } catch {
-    return {
-      ...starter,
-      answer: `The ${domain} API is responding slowly right now, so starter capability paths are being shown.`,
-      sections: extractSections(`1. Direct answer
-The ${domain} API is responding slowly right now, so starter capability paths are being shown.
+async function buildOverviewResponse(domain, message) {
+  const [overview, ops, schemas] = await Promise.all([
+    safeGetOverview(domain),
+    safeListOperations(domain, 8),
+    safeListSchemas(domain, 8)
+  ]);
 
-2. Useful next steps
-Use the starter capability cards below to continue exploring advisor workflow guidance.`)
-    };
-  }
+  const baseBlurb = getBuiltInOverviewBlurb(domain);
 
+  let answer;
   try {
     const response = await withTimeout(
       client.responses.create({
         model: MODEL,
-        input: `You are a STAR automotive retail strategist.
-
-Return ONLY valid JSON in this shape:
-{
-  "answer": "string",
-  "capability_cards": [{"title":"string","description":"string","identifier":"string","prompt":"string"}],
-  "workflow_map": [{"step":"string","detail":"string","prompt":"string"}]
-}
-
-Group these operations into dealership-friendly business capabilities for a service advisor.
-Use real identifiers when available.
-API domain: ${domain}
-
-DATA:
-${JSON.stringify(ops)}`
-      }),
-      12000,
-      'OpenAI capability grouping'
-    );
-
-    const parsed = safeParseJson(response.output_text);
-    if (!parsed || !Array.isArray(parsed.capability_cards)) {
-      throw new Error('Invalid capability JSON');
-    }
-
-    return {
-      answer: parsed.answer || `Business capabilities for the ${domain} API are shown below.`,
-      sections: extractSections(parsed.answer || `Overview\nBusiness capabilities for the ${domain} API are shown below.`),
-      capability_cards: parsed.capability_cards,
-      endpoint_cards: deriveEndpointCards(ops, domain),
-      schema_cards: [],
-      workflow_map: Array.isArray(parsed.workflow_map) ? parsed.workflow_map : defaultWorkflowMap(domain),
-      progressive: false
-    };
-  } catch {
-    return {
-      answer: `I found a smaller set of live operations for the ${domain} API. These business capabilities are based on the available operation sample.`,
-      sections: extractSections(`1. Direct answer
-I found a smaller set of live operations for the ${domain} API.
-
-2. Useful next steps
-Use the capability cards below to continue exploring advisor workflow guidance.`),
-      capability_cards: operationBasedCapabilityCards(domain, ops),
-      endpoint_cards: deriveEndpointCards(ops, domain),
-      schema_cards: [],
-      workflow_map: defaultWorkflowMap(domain),
-      progressive: false
-    };
-  }
-}
-
-async function buildOverview(domain, message) {
-  const [overview, ops, schemas] = await Promise.all([
-    toolCached('getApiOverview', { domain_name: domain }),
-    toolCached('listOperations', { domain_name: domain, limit: 8 }).catch(() => ({ operations: [] })),
-    toolCached('listSchemas', { domain_name: domain, limit: 8 }).catch(() => ({ schemas: [] }))
-  ]);
-
-  const response = await withTimeout(
-    client.responses.create({
-      model: MODEL,
-      input: `You are a STAR automotive retail API architect.
+        input: `You are a STAR automotive retail API architect.
 The appointment API means dealer vehicle service appointments, not medical scheduling.
 The multi-point-inspection API means vehicle inspection workflow.
 
 User request:
 ${message}
 
-Overview:
+Built-in context:
+${baseBlurb}
+
+MCP overview:
 ${JSON.stringify(overview)}
 
 Operations:
@@ -480,22 +505,139 @@ Write a structured answer with:
 3. Main resources
 4. Typical workflow
 5. What to explore next`
-    }),
-    12000,
-    'OpenAI overview generation'
-  );
+      }),
+      10000,
+      'OpenAI overview generation'
+    );
+
+    answer = response.output_text;
+  } catch {
+    answer = `1. What it is
+${baseBlurb}
+
+2. Core concepts
+This API supports dealership workflow coordination and structured business data exchange.
+
+3. Main resources
+Use the inspector on the right to explore capabilities, schemas, and endpoints.
+
+4. Typical workflow
+Follow the workflow map to understand how this API supports dealer operations.
+
+5. What to explore next
+Use the business capability view, schemas, and endpoints for deeper inspection.`;
+  }
 
   return {
-    answer: response.output_text,
-    sections: extractSections(response.output_text),
-    capability_cards: [],
+    answer,
+    sections: extractSections(answer),
+    capability_cards: getBuiltInCapabilityCards(domain),
     endpoint_cards: deriveEndpointCards(ops, domain),
     schema_cards: deriveSchemaCards(schemas, domain),
-    workflow_map: defaultWorkflowMap(domain)
+    workflow_map: getBuiltInWorkflowMap(domain),
+    progressive: false
   };
 }
 
-/* ---------- ROUTES ---------- */
+async function buildSchemaResponse(domain, message) {
+  const schemas = await safeListSchemas(domain, 8);
+
+  let answer;
+  try {
+    const response = await withTimeout(
+      client.responses.create({
+        model: MODEL,
+        input: `You are a STAR automotive retail API assistant.
+
+User request:
+${message}
+
+Schemas:
+${JSON.stringify(schemas)}
+
+Write a concise answer with:
+1. Direct answer
+2. Key schema details
+3. Useful next steps`
+      }),
+      9000,
+      'OpenAI schema answer generation'
+    );
+
+    answer = response.output_text;
+  } catch {
+    answer = `1. Direct answer
+Relevant schemas for the ${domain} API are shown in the inspector.
+
+2. Key schema details
+Use the schema cards to inspect names and definitions.
+
+3. Useful next steps
+Open a schema card or ask for a specific schema by name.`;
+  }
+
+  return {
+    answer,
+    sections: extractSections(answer),
+    capability_cards: getBuiltInCapabilityCards(domain),
+    endpoint_cards: [],
+    schema_cards: deriveSchemaCards(schemas, domain),
+    workflow_map: getBuiltInWorkflowMap(domain),
+    progressive: false
+  };
+}
+
+async function buildEndpointResponse(domain, message) {
+  const ops = await safeListOperations(domain, 8);
+
+  let answer;
+  try {
+    const response = await withTimeout(
+      client.responses.create({
+        model: MODEL,
+        input: `You are a STAR automotive retail API assistant.
+
+User request:
+${message}
+
+Operations:
+${JSON.stringify(ops)}
+
+Write a concise answer with:
+1. Direct answer
+2. Key endpoint details
+3. Useful next steps`
+      }),
+      9000,
+      'OpenAI endpoint answer generation'
+    );
+
+    answer = response.output_text;
+  } catch {
+    answer = `1. Direct answer
+Representative endpoints for the ${domain} API are shown in the inspector.
+
+2. Key endpoint details
+Use the endpoint cards to inspect operations and business purpose.
+
+3. Useful next steps
+Click an endpoint card or ask for a specific operation.`;
+  }
+
+  return {
+    answer,
+    sections: extractSections(answer),
+    capability_cards: getBuiltInCapabilityCards(domain),
+    endpoint_cards: deriveEndpointCards(ops, domain),
+    schema_cards: [],
+    workflow_map: getBuiltInWorkflowMap(domain),
+    progressive: false
+  };
+}
+
+/* --------------------------------------------------
+ * ROUTES
+ * -------------------------------------------------- */
 
 app.get('/health', (_req, res) => {
   res.json({
@@ -535,7 +677,7 @@ app.post('/api/chat', async (req, res) => {
     const domain = detectDomain(message);
 
     if (domain && wantsCapabilities(message)) {
-      const result = await buildCapabilities(domain);
+      const result = await buildCapabilityResponse(domain);
       return res.json({
         ...result,
         tool_name: 'business_capability_navigator',
@@ -549,7 +691,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     if (domain && wantsOverview(message)) {
-      const result = await buildOverview(domain, message);
+      const result = await buildOverviewResponse(domain, message);
       return res.json({
         ...result,
         tool_name: 'overview_pipeline',
@@ -558,6 +700,32 @@ app.post('/api/chat', async (req, res) => {
           `Show me the business capabilities of the ${domain} API for a dealership service advisor`,
           `List schemas for the ${domain} API`,
           `Show example endpoints for the ${domain} API`
+        ]
+      });
+    }
+
+    if (domain && wantsSchemas(message)) {
+      const result = await buildSchemaResponse(domain, message);
+      return res.json({
+        ...result,
+        tool_name: 'schema_pipeline',
+        tool_arguments: { domain_name: domain },
+        explore_next: [
+          `Show me the business capabilities of the ${domain} API for a dealership service advisor`,
+          `Show example endpoints for the ${domain} API`
+        ]
+      });
+    }
+
+    if (domain && wantsEndpoints(message)) {
+      const result = await buildEndpointResponse(domain, message);
+      return res.json({
+        ...result,
+        tool_name: 'endpoint_pipeline',
+        tool_arguments: { domain_name: domain },
+        explore_next: [
+          `Show me the business capabilities of the ${domain} API for a dealership service advisor`,
+          `List schemas for the ${domain} API`
         ]
       });
     }
@@ -574,7 +742,7 @@ ${JSON.stringify(result)}
 
 Answer clearly and concisely in the context of STAR automotive APIs.`
       }),
-      10000,
+      8000,
       'OpenAI answer generation'
     );
 
@@ -607,5 +775,5 @@ Answer clearly and concisely in the context of STAR automotive APIs.`
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`STAR V5.1 running on ${PORT}`);
+  console.log(`STAR production-ready server running on ${PORT}`);
 });

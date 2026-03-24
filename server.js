@@ -555,6 +555,57 @@ It may define start/end times, windows, or booking-specific scheduling metadata.
 3. Why it matters
 It is central to planning and coordinating service operations.`
       }
+    },
+
+    raw_schemas: {
+      Appointment: {
+        type: 'object',
+        required: ['appointment_id'],
+        properties: {
+          appointment_id: { type: 'string' },
+          appointment_status: { $ref: '#/components/schemas/AppointmentStatus' },
+          vehicle_reference: { $ref: '#/components/schemas/VehicleReference' },
+          party_reference: { $ref: '#/components/schemas/PartyReference' },
+          time_slot: { $ref: '#/components/schemas/TimeSlot' },
+          requested_services: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/RequestedService' }
+          }
+        }
+      },
+      RequestedService: {
+        type: 'object',
+        properties: {
+          requested_service_id: { type: 'string' },
+          service_name: { type: 'string' },
+          service_description: { type: 'string' }
+        }
+      },
+      AppointmentStatus: {
+        type: 'string',
+        enum: ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled']
+      },
+      VehicleReference: {
+        type: 'object',
+        properties: {
+          vehicle_id: { type: 'string' },
+          vin: { type: 'string' }
+        }
+      },
+      PartyReference: {
+        type: 'object',
+        properties: {
+          party_id: { type: 'string' },
+          party_type: { type: 'string' }
+        }
+      },
+      TimeSlot: {
+        type: 'object',
+        properties: {
+          start_date_time: { type: 'string', format: 'date-time' },
+          end_date_time: { type: 'string', format: 'date-time' }
+        }
+      }
     }
   },
 
@@ -905,6 +956,69 @@ This schema may be a standalone object or an enum-oriented structure that captur
 3. Why it matters
 Status drives workflow visibility, operational coordination, and downstream handling.`
       }
+    },
+
+    raw_schemas: {
+      Inspection: {
+        type: 'object',
+        required: ['inspection_id'],
+        properties: {
+          inspection_id: { type: 'string' },
+          inspection_status: { $ref: '#/components/schemas/InspectionStatus' },
+          vehicle_reference: { type: 'object' },
+          findings: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/Finding' }
+          },
+          recommendations: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/Recommendation' }
+          }
+        }
+      },
+      Finding: {
+        type: 'object',
+        properties: {
+          finding_id: { type: 'string' },
+          finding_status: { type: 'string' },
+          notes: { type: 'string' },
+          media: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/InspectionMedia' }
+          }
+        }
+      },
+      Recommendation: {
+        type: 'object',
+        properties: {
+          recommendation_id: { type: 'string' },
+          recommendation_text: { type: 'string' },
+          related_findings: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/Finding' }
+          }
+        }
+      },
+      Approval: {
+        type: 'object',
+        properties: {
+          approval_id: { type: 'string' },
+          approval_status: { type: 'string' },
+          decision_timestamp: { type: 'string', format: 'date-time' }
+        }
+      },
+      InspectionMedia: {
+        type: 'object',
+        properties: {
+          media_id: { type: 'string' },
+          media_type: { type: 'string' },
+          media_url: { type: 'string', format: 'uri' }
+        }
+      },
+      InspectionStatus: {
+        type: 'string',
+        enum: ['started', 'in_progress', 'completed', 'published']
+      }
     }
   }
 };
@@ -936,6 +1050,11 @@ function getBuiltInEndpointCards(domain) {
 function getBuiltInSchemaDetails(domain, schemaName) {
   const normalized = String(schemaName || '').trim();
   return DOMAIN_CONFIG[domain]?.schema_details?.[normalized] || null;
+}
+
+function getBuiltInRawSchema(domain, schemaName) {
+  const normalized = String(schemaName || '').trim();
+  return DOMAIN_CONFIG[domain]?.raw_schemas?.[normalized] || null;
 }
 
 /* --------------------------------------------------
@@ -1170,6 +1289,7 @@ async function buildSchemaDetailResponse(domain, schemaName, audience) {
   }
 
   const builtIn = getBuiltInSchemaDetails(domain, schemaName);
+  const rawSchema = liveSchema || getBuiltInRawSchema(domain, schemaName);
 
   let answer;
   if (liveSchema) {
@@ -1222,6 +1342,8 @@ Inspect related schema cards or ask for endpoints tied to this schema.`;
     answer,
     sections: extractSections(answer),
     audience,
+    raw_schema: rawSchema,
+    raw_schema_format: 'json',
     capability_cards: getBuiltInCapabilityCards(domain),
     endpoint_cards: getBuiltInEndpointCards(domain),
     schema_cards: getBuiltInSchemaCards(domain),

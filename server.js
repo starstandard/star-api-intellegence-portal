@@ -77,6 +77,7 @@ function isRateLimitErrorMessage(msg = '') {
     m.includes('rate-limited') ||
     m.includes('being rate limited') ||
     m.includes('"code":429') ||
+    m.includes(' 429') ||
     m.includes('429')
   );
 }
@@ -224,6 +225,24 @@ function wantsEndpoints(message = '') {
     m.includes('url') ||
     m.includes('path')
   );
+}
+
+function extractRequestedSchemaName(message = '') {
+  const text = String(message || '');
+  const patterns = [
+    /show schema\s+(.+?)(?:\s+in\s+the\s+.+?api)?$/i,
+    /explain schema\s+(.+?)(?:\s+in\s+the\s+.+?api)?$/i,
+    /schema\s+(.+?)(?:\s+details)?(?:\s+in\s+the\s+.+?api)?$/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+
+  return null;
 }
 
 function extractOperations(result) {
@@ -467,7 +486,76 @@ Review bounded-context relationships, key references, and how Appointment feeds 
         description: 'View requested services tied to an appointment.',
         prompt: 'Explain GET /appointments/{id}/requested-services for the Appointment API'
       }
-    ]
+    ],
+
+    schema_details: {
+      Appointment: {
+        title: 'Appointment',
+        body: `1. Direct answer
+Appointment is the core entity of the Appointment API and represents a dealership service booking or planned visit.
+
+2. Key schema details
+This schema usually contains customer and vehicle references, service intent, schedule context, and lifecycle state.
+
+3. Why it matters
+It is the anchor object for the scheduling and intake domain.`
+      },
+      RequestedService: {
+        title: 'RequestedService',
+        body: `1. Direct answer
+RequestedService represents service work requested as part of an appointment.
+
+2. Key schema details
+It typically carries structured service intent and may be linked to appointment context, customer expectations, and intake planning.
+
+3. Why it matters
+It helps translate customer booking intent into operational service context.`
+      },
+      AppointmentStatus: {
+        title: 'AppointmentStatus',
+        body: `1. Direct answer
+AppointmentStatus represents lifecycle or workflow state for an appointment.
+
+2. Key schema details
+This can be modeled as a status field, enum-like object, or supporting schema depending on implementation.
+
+3. Why it matters
+Status is important for scheduling flow, intake readiness, and operational coordination.`
+      },
+      VehicleReference: {
+        title: 'VehicleReference',
+        body: `1. Direct answer
+VehicleReference links the appointment to the vehicle being serviced.
+
+2. Key schema details
+It typically contains identifiers and reference information rather than full vehicle domain ownership.
+
+3. Why it matters
+It enables intake, service planning, and downstream vehicle-related workflows.`
+      },
+      PartyReference: {
+        title: 'PartyReference',
+        body: `1. Direct answer
+PartyReference links the appointment to a customer or other relevant party.
+
+2. Key schema details
+It is usually a lightweight reference structure rather than full party ownership.
+
+3. Why it matters
+It supports customer linkage without making Appointment the system of record for party data.`
+      },
+      TimeSlot: {
+        title: 'TimeSlot',
+        body: `1. Direct answer
+TimeSlot represents appointment timing or scheduling structure.
+
+2. Key schema details
+It may define start/end times, windows, or booking-specific scheduling metadata.
+
+3. Why it matters
+It is central to planning and coordinating service operations.`
+      }
+    }
   },
 
   'multi-point-inspection': {
@@ -748,7 +836,76 @@ Review relationships between inspection, findings, recommendations, approvals, a
         description: 'Capture approval or decline outcomes.',
         prompt: 'Explain POST /inspections/{id}/approvals for the multi-point-inspection API'
       }
-    ]
+    ],
+
+    schema_details: {
+      Inspection: {
+        title: 'Inspection',
+        body: `1. Direct answer
+Inspection is the core entity of the Multi-Point Inspection API. It represents the overall inspection lifecycle for a vehicle visit or service event.
+
+2. Key schema details
+This schema typically acts as the parent object for inspection status, findings, recommendations, media relationships, and workflow state. Technical consumers should treat it as the anchor entity for the MPI domain.
+
+3. Why it matters
+This object is the main entry point for understanding how the inspection is created, tracked, and completed across the service workflow.`
+      },
+      Finding: {
+        title: 'Finding',
+        body: `1. Direct answer
+Finding represents an observed inspection result, condition, or issue discovered during the inspection process.
+
+2. Key schema details
+This schema typically includes the technical observation itself, status or severity information, notes, and relationships to media or recommendations. It is one of the most important technical structures in the MPI domain.
+
+3. Why it matters
+Findings are the bridge between technician observation and advisor/customer communication.`
+      },
+      Recommendation: {
+        title: 'Recommendation',
+        body: `1. Direct answer
+Recommendation represents suggested work or next steps derived from inspection findings.
+
+2. Key schema details
+This schema usually links findings to proposed action, service guidance, and downstream approval or execution processes. Technical users should inspect how it references findings and whether it carries pricing, labor, or customer-facing context.
+
+3. Why it matters
+Recommendations convert observed condition into actionable service proposals.`
+      },
+      Approval: {
+        title: 'Approval',
+        body: `1. Direct answer
+Approval captures customer decision outcomes for recommended work.
+
+2. Key schema details
+This schema often includes approval state, decision timestamps, notes, and references to recommendations or related workflow objects.
+
+3. Why it matters
+Approval is where business intent becomes an execution decision.`
+      },
+      InspectionMedia: {
+        title: 'InspectionMedia',
+        body: `1. Direct answer
+InspectionMedia represents photos, videos, or supporting evidence attached to inspection results.
+
+2. Key schema details
+This schema usually contains media metadata, references to findings or inspections, and possibly URLs or storage-related attributes depending on implementation.
+
+3. Why it matters
+Media provides supporting evidence for technician findings and advisor communication.`
+      },
+      InspectionStatus: {
+        title: 'InspectionStatus',
+        body: `1. Direct answer
+InspectionStatus represents workflow or lifecycle state for the inspection process.
+
+2. Key schema details
+This schema may be a standalone object or an enum-oriented structure that captures lifecycle progress such as started, in-progress, completed, or published.
+
+3. Why it matters
+Status drives workflow visibility, operational coordination, and downstream handling.`
+      }
+    }
   }
 };
 
@@ -774,6 +931,11 @@ function getBuiltInSchemaCards(domain) {
 
 function getBuiltInEndpointCards(domain) {
   return DOMAIN_CONFIG[domain]?.endpoint_cards || [];
+}
+
+function getBuiltInSchemaDetails(domain, schemaName) {
+  const normalized = String(schemaName || '').trim();
+  return DOMAIN_CONFIG[domain]?.schema_details?.[normalized] || null;
 }
 
 /* --------------------------------------------------
@@ -995,6 +1157,79 @@ Open a schema card, switch to Technical mode for schema-oriented reading, or ask
   };
 }
 
+async function buildSchemaDetailResponse(domain, schemaName, audience) {
+  let liveSchema = null;
+
+  try {
+    liveSchema = await toolCached('getSchema', {
+      domain_name: domain,
+      schema_name: schemaName
+    });
+  } catch {
+    liveSchema = null;
+  }
+
+  const builtIn = getBuiltInSchemaDetails(domain, schemaName);
+
+  let answer;
+  if (liveSchema) {
+    try {
+      const response = await withTimeout(
+        client.responses.create({
+          model: MODEL,
+          input: `You are a STAR automotive retail API assistant.
+Audience: ${audience}
+
+Schema name:
+${schemaName}
+
+Schema data:
+${JSON.stringify(liveSchema)}
+
+Write a structured explanation with:
+1. Direct answer
+2. Key schema details
+3. Why it matters
+4. Useful next steps`
+        }),
+        10000,
+        'OpenAI schema detail generation'
+      );
+
+      answer = response.output_text;
+    } catch {
+      answer = builtIn?.body || `1. Direct answer
+${schemaName} is a schema in the ${domain} API.
+
+2. Key schema details
+Detailed schema content could not be retrieved right now.
+
+3. Useful next steps
+Inspect related schema cards or ask for endpoints tied to this schema.`;
+    }
+  } else {
+    answer = builtIn?.body || `1. Direct answer
+${schemaName} is a schema in the ${domain} API.
+
+2. Key schema details
+Detailed schema content could not be retrieved right now.
+
+3. Useful next steps
+Inspect related schema cards or ask for endpoints tied to this schema.`;
+  }
+
+  return {
+    answer,
+    sections: extractSections(answer),
+    audience,
+    capability_cards: getBuiltInCapabilityCards(domain),
+    endpoint_cards: getBuiltInEndpointCards(domain),
+    schema_cards: getBuiltInSchemaCards(domain),
+    workflow_map: getBuiltInWorkflowMap(domain),
+    progressive: !liveSchema
+  };
+}
+
 async function buildEndpointResponse(domain, message, audience) {
   const ops = await safeListOperations(domain, 5);
   const liveEndpointCards = deriveEndpointCards(ops, domain);
@@ -1088,6 +1323,21 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const domain = detectDomain(message);
+    const requestedSchemaName = extractRequestedSchemaName(message);
+
+    if (domain && requestedSchemaName) {
+      const result = await buildSchemaDetailResponse(domain, requestedSchemaName, audience);
+      return res.json({
+        ...result,
+        tool_name: 'schema_detail_pipeline',
+        tool_arguments: { domain_name: domain, schema_name: requestedSchemaName, audience },
+        explore_next: [
+          `Show me the schemas of the ${domain} API`,
+          `Show example endpoints for the ${domain} API`,
+          `Show me the business capabilities of the ${domain} API`
+        ]
+      });
+    }
 
     if (domain && wantsCapabilities(message)) {
       const result = await buildCapabilityResponse(domain, audience);

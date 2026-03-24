@@ -69,6 +69,18 @@ function parseMcpResponse(text, contentType = '') {
   return JSON.parse(dataLines[dataLines.length - 1]);
 }
 
+function isRateLimitErrorMessage(msg = '') {
+  const m = String(msg).toLowerCase();
+  return (
+    m.includes('too many requests') ||
+    m.includes('rate limit') ||
+    m.includes('rate-limited') ||
+    m.includes('being rate limited') ||
+    m.includes('"code":429') ||
+    m.includes('429')
+  );
+}
+
 async function callMcp(method, params = {}) {
   if (!MCP_SERVER_URL) {
     throw new Error('Missing MCP_SERVER_URL');
@@ -394,6 +406,67 @@ Review bounded-context relationships, key references, and how Appointment feeds 
         detail: 'Appointment data supports dealer operations',
         prompt: 'Explain how the Appointment API supports service-lane preparation'
       }
+    ],
+
+    schema_cards: [
+      {
+        title: 'Appointment',
+        description: 'Core appointment entity for dealership service scheduling.',
+        prompt: 'Show schema Appointment in the Appointment API'
+      },
+      {
+        title: 'RequestedService',
+        description: 'Represents requested service work tied to an appointment.',
+        prompt: 'Show schema RequestedService in the Appointment API'
+      },
+      {
+        title: 'AppointmentStatus',
+        description: 'Represents appointment lifecycle or state.',
+        prompt: 'Show schema AppointmentStatus in the Appointment API'
+      },
+      {
+        title: 'VehicleReference',
+        description: 'Vehicle identity and linkage used by the appointment domain.',
+        prompt: 'Show schema VehicleReference in the Appointment API'
+      },
+      {
+        title: 'PartyReference',
+        description: 'Customer or related party linkage used in the appointment domain.',
+        prompt: 'Show schema PartyReference in the Appointment API'
+      },
+      {
+        title: 'TimeSlot',
+        description: 'Scheduling or timing structure for appointment planning.',
+        prompt: 'Show schema TimeSlot in the Appointment API'
+      }
+    ],
+
+    endpoint_cards: [
+      {
+        title: 'GET /appointments',
+        description: 'List or search appointments.',
+        prompt: 'Explain GET /appointments for the Appointment API'
+      },
+      {
+        title: 'POST /appointments',
+        description: 'Create a new appointment.',
+        prompt: 'Explain POST /appointments for the Appointment API'
+      },
+      {
+        title: 'GET /appointments/{id}',
+        description: 'Retrieve a specific appointment.',
+        prompt: 'Explain GET /appointments/{id} for the Appointment API'
+      },
+      {
+        title: 'PATCH /appointments/{id}',
+        description: 'Update an existing appointment.',
+        prompt: 'Explain PATCH /appointments/{id} for the Appointment API'
+      },
+      {
+        title: 'GET /appointments/{id}/requested-services',
+        description: 'View requested services tied to an appointment.',
+        prompt: 'Explain GET /appointments/{id}/requested-services for the Appointment API'
+      }
     ]
   },
 
@@ -609,6 +682,72 @@ Review relationships between inspection, findings, recommendations, approvals, a
         prompt:
           'Explain how approved work moves into execution from the multi-point-inspection API'
       }
+    ],
+
+    schema_cards: [
+      {
+        title: 'Inspection',
+        description: 'Core inspection entity representing the inspection lifecycle.',
+        prompt: 'Show schema Inspection in the multi-point-inspection API'
+      },
+      {
+        title: 'Finding',
+        description: 'Represents an inspection finding, condition, or observed result.',
+        prompt: 'Show schema Finding in the multi-point-inspection API'
+      },
+      {
+        title: 'Recommendation',
+        description: 'Represents advisor-ready or technician-derived recommended work.',
+        prompt: 'Show schema Recommendation in the multi-point-inspection API'
+      },
+      {
+        title: 'Approval',
+        description: 'Captures customer approval or decline decisions.',
+        prompt: 'Show schema Approval in the multi-point-inspection API'
+      },
+      {
+        title: 'InspectionMedia',
+        description: 'Represents photos, videos, or other evidence attached to findings.',
+        prompt: 'Show schema InspectionMedia in the multi-point-inspection API'
+      },
+      {
+        title: 'InspectionStatus',
+        description: 'Represents workflow or lifecycle state of an inspection.',
+        prompt: 'Show schema InspectionStatus in the multi-point-inspection API'
+      }
+    ],
+
+    endpoint_cards: [
+      {
+        title: 'GET /inspections',
+        description: 'List or search inspections.',
+        prompt: 'Explain GET /inspections for the multi-point-inspection API'
+      },
+      {
+        title: 'POST /inspections',
+        description: 'Create or start an inspection.',
+        prompt: 'Explain POST /inspections for the multi-point-inspection API'
+      },
+      {
+        title: 'GET /inspections/{id}',
+        description: 'Retrieve a specific inspection.',
+        prompt: 'Explain GET /inspections/{id} for the multi-point-inspection API'
+      },
+      {
+        title: 'GET /inspections/{id}/findings',
+        description: 'Retrieve findings tied to an inspection.',
+        prompt: 'Explain GET /inspections/{id}/findings for the multi-point-inspection API'
+      },
+      {
+        title: 'POST /inspections/{id}/recommendations',
+        description: 'Create or record recommendations for an inspection.',
+        prompt: 'Explain POST /inspections/{id}/recommendations for the multi-point-inspection API'
+      },
+      {
+        title: 'POST /inspections/{id}/approvals',
+        description: 'Capture approval or decline outcomes.',
+        prompt: 'Explain POST /inspections/{id}/approvals for the multi-point-inspection API'
+      }
     ]
   }
 };
@@ -627,6 +766,14 @@ function getBuiltInCapabilityCards(domain) {
 
 function getBuiltInWorkflowMap(domain) {
   return DOMAIN_CONFIG[domain]?.workflow_map || [];
+}
+
+function getBuiltInSchemaCards(domain) {
+  return DOMAIN_CONFIG[domain]?.schema_cards || [];
+}
+
+function getBuiltInEndpointCards(domain) {
+  return DOMAIN_CONFIG[domain]?.endpoint_cards || [];
 }
 
 /* --------------------------------------------------
@@ -686,8 +833,16 @@ async function buildCapabilityResponse(domain, audience) {
     safeListSchemas(domain, 5)
   ]);
 
-  const endpointCards = deriveEndpointCards(ops, domain);
-  const schemaCards = deriveSchemaCards(schemas, domain);
+  const liveEndpointCards = deriveEndpointCards(ops, domain);
+  const liveSchemaCards = deriveSchemaCards(schemas, domain);
+
+  const endpointCards = liveEndpointCards.length
+    ? liveEndpointCards
+    : getBuiltInEndpointCards(domain);
+
+  const schemaCards = liveSchemaCards.length
+    ? liveSchemaCards
+    : getBuiltInSchemaCards(domain);
 
   let intro;
   if (audience === 'technical') {
@@ -726,7 +881,7 @@ Select a capability card to go deeper into business guidance and next actions.`;
     endpoint_cards: endpointCards,
     schema_cards: schemaCards,
     workflow_map: workflowMap,
-    progressive: endpointCards.length === 0 && schemaCards.length === 0
+    progressive: liveEndpointCards.length === 0 || liveSchemaCards.length === 0
   };
 }
 
@@ -775,19 +930,24 @@ Write a rich structured answer that preserves the depth of the built-in domain o
     answer = builtInOverview;
   }
 
+  const liveEndpointCards = deriveEndpointCards(ops, domain);
+  const liveSchemaCards = deriveSchemaCards(schemas, domain);
+
   return {
     answer,
     sections: extractSections(answer),
     capability_cards: getBuiltInCapabilityCards(domain),
-    endpoint_cards: deriveEndpointCards(ops, domain),
-    schema_cards: deriveSchemaCards(schemas, domain),
+    endpoint_cards: liveEndpointCards.length ? liveEndpointCards : getBuiltInEndpointCards(domain),
+    schema_cards: liveSchemaCards.length ? liveSchemaCards : getBuiltInSchemaCards(domain),
     workflow_map: getBuiltInWorkflowMap(domain),
-    progressive: false
+    progressive: liveEndpointCards.length === 0 || liveSchemaCards.length === 0
   };
 }
 
 async function buildSchemaResponse(domain, message, audience) {
   const schemas = await safeListSchemas(domain, 8);
+  const liveSchemaCards = deriveSchemaCards(schemas, domain);
+  const schemaCards = liveSchemaCards.length ? liveSchemaCards : getBuiltInSchemaCards(domain);
 
   let answer;
   try {
@@ -815,13 +975,13 @@ Write a concise answer with:
     answer = response.output_text;
   } catch {
     answer = `1. Direct answer
-Relevant schemas for the ${domain} API are shown in the inspector.
+Representative schemas for the ${domain} API are shown in the inspector.
 
 2. Key schema details
-Use the schema cards to inspect names and definitions.
+These schema cards represent the primary object families and data structures that technical and business users typically need first.
 
 3. Useful next steps
-Open a schema card or ask for a specific schema by name.`;
+Open a schema card, switch to Technical mode for schema-oriented reading, or ask for a specific schema by name.`;
   }
 
   return {
@@ -829,14 +989,16 @@ Open a schema card or ask for a specific schema by name.`;
     sections: extractSections(answer),
     capability_cards: getBuiltInCapabilityCards(domain),
     endpoint_cards: [],
-    schema_cards: deriveSchemaCards(schemas, domain),
+    schema_cards: schemaCards,
     workflow_map: getBuiltInWorkflowMap(domain),
-    progressive: false
+    progressive: liveSchemaCards.length === 0
   };
 }
 
 async function buildEndpointResponse(domain, message, audience) {
   const ops = await safeListOperations(domain, 5);
+  const liveEndpointCards = deriveEndpointCards(ops, domain);
+  const endpointCards = liveEndpointCards.length ? liveEndpointCards : getBuiltInEndpointCards(domain);
 
   let answer;
   try {
@@ -877,10 +1039,10 @@ Inspect the endpoint cards, switch to Technical mode for implementation-oriented
     answer,
     sections: extractSections(answer),
     capability_cards: getBuiltInCapabilityCards(domain),
-    endpoint_cards: deriveEndpointCards(ops, domain),
+    endpoint_cards: endpointCards,
     schema_cards: [],
     workflow_map: getBuiltInWorkflowMap(domain),
-    progressive: false
+    progressive: liveEndpointCards.length === 0
   };
 }
 
@@ -1019,7 +1181,7 @@ Answer clearly and concisely in the context of STAR automotive APIs.`
   } catch (e) {
     const msg = e?.message || 'Unknown error';
 
-    if (msg.includes('Too Many Requests')) {
+    if (isRateLimitErrorMessage(msg)) {
       return res.status(429).json({
         error: 'The service is being rate limited right now. Please wait a few seconds and try again.'
       });

@@ -126,7 +126,7 @@
       font-weight:800;
     }
 
-    .nav-card,.play-card,.action-card,.schema-card,.endpoint-card,.capability-card,.workflow-card,.mini-btn{
+    .nav-card,.play-card,.action-card,.schema-card,.endpoint-card,.capability-card,.workflow-card,.audience-btn,.ghost-mini{
       width:100%;
       text-align:left;
       color:var(--text);
@@ -139,10 +139,28 @@
       margin-bottom:10px;
     }
 
-    .nav-card:hover,.play-card:hover,.action-card:hover,.schema-card:hover,.endpoint-card:hover,.capability-card:hover,.workflow-card:hover,.btn:hover,.ghost:hover,.tab:hover,.mini-btn:hover{
+    .nav-card:hover,.play-card:hover,.action-card:hover,.schema-card:hover,.endpoint-card:hover,.capability-card:hover,.workflow-card:hover,.btn:hover,.ghost:hover,.tab:hover,.audience-btn:hover,.ghost-mini:hover{
       transform:translateY(-1px);
       border-color:#5b84d9;
       background:linear-gradient(180deg, rgba(24,39,70,.98), rgba(12,20,37,.98));
+    }
+
+    .audience-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .audience-btn{
+      width:auto;
+      margin-bottom:0;
+      padding:10px 12px;
+      font-weight:700;
+    }
+
+    .audience-btn.active{
+      border-color:#7fb4ff;
+      box-shadow:0 0 0 1px rgba(127,180,255,.35) inset;
     }
 
     .nav-title,.schema-title,.endpoint-title,.capability-title,.workflow-title{
@@ -252,10 +270,17 @@
       color:#07111f;
     }
 
-    .ghost,.tab{
+    .ghost,.tab,.ghost-mini{
       background:#182746;
       color:#e5efff;
       border:1px solid var(--line);
+    }
+
+    .ghost-mini{
+      width:auto;
+      padding:9px 12px;
+      font-weight:700;
+      margin-bottom:0;
     }
 
     .status{
@@ -412,14 +437,14 @@
       margin-top:4px;
     }
 
-    .inspector-body{
-      padding:16px;
-    }
-
     .progress-note{
       margin-top:8px;
       color:#a4c5ff;
       font-size:12px;
+    }
+
+    .inspector-body{
+      padding:16px;
     }
 
     #capabilityCards{
@@ -449,7 +474,7 @@
     }
 
     .modal-card{
-      width:min(1100px,100%);
+      width:min(1160px,100%);
       max-height:88vh;
       overflow:auto;
       background:#0b1220;
@@ -513,18 +538,27 @@
         <div class="brand-mark">★</div>
         <div class="brand-copy">
           <h1>STAR Automotive API Intelligence</h1>
-          <p>Rich business-capability guidance for dealer-service API discovery.</p>
+          <p>Audience-aware domain intelligence for business, technical, and architecture users.</p>
         </div>
       </div>
       <div class="top-actions">
-        <div class="pill">Matched Pair</div>
+        <div class="pill">Audience Aware</div>
+        <div class="pill">Business + Technical + Architecture</div>
         <div class="pill">Rich Capability Detail</div>
-        <div class="pill">MPI + Appointment</div>
       </div>
     </div>
 
     <div class="layout">
       <aside class="panel">
+        <div class="sidebar-section">
+          <div class="eyebrow">Audience</div>
+          <div class="audience-row">
+            <button class="audience-btn active" data-audience="business" onclick="setAudience('business')">Business</button>
+            <button class="audience-btn" data-audience="technical" onclick="setAudience('technical')">Technical</button>
+            <button class="audience-btn" data-audience="architecture" onclick="setAudience('architecture')">Architecture</button>
+          </div>
+        </div>
+
         <div class="sidebar-section">
           <div class="eyebrow">API Explorer</div>
           <button class="nav-card" onclick="ask('Give me an overview of the Appointment API')">
@@ -535,11 +569,12 @@
             <div class="nav-title">Multi-Point Inspection API</div>
             <div class="nav-meta">Vehicle inspection workflow, findings, labor, and advisor-facing actions.</div>
           </button>
-          <button class="nav-card" onclick="ask('Show me the business capabilities of the Multi-Point Inspection API for a dealership service advisor')">
+          <button class="nav-card" onclick="ask('Show me the business capabilities of the Multi-Point Inspection API')">
             <div class="nav-title">MPI Business Capabilities</div>
-            <div class="nav-meta">Launch rich service-advisor capability guidance.</div>
+            <div class="nav-meta">Launch rich capability guidance using the selected audience mode.</div>
           </button>
         </div>
+
         <div class="sidebar-section">
           <div class="eyebrow">Executive Demo Mode</div>
           <div id="executivePrompts"></div>
@@ -548,18 +583,18 @@
 
       <main>
         <section class="hero panel">
-          <h2>Business-first API intelligence</h2>
-          <p>Explore STAR APIs through richer business capabilities, workflows, schemas, and endpoints without losing production reliability.</p>
+          <h2>One domain, multiple lenses</h2>
+          <p>Use Business mode for workflow and customer impact, Technical mode for schemas and implementation concerns, and Architecture mode for boundaries and integration design.</p>
           <div class="hero-tags">
-            <div class="hero-tag">Appointment API</div>
-            <div class="hero-tag">MPI API</div>
-            <div class="hero-tag">Rich Guidance</div>
-            <div class="hero-tag">Production-safe</div>
+            <div class="hero-tag">Business</div>
+            <div class="hero-tag">Technical</div>
+            <div class="hero-tag">Architecture</div>
+            <div class="hero-tag">MPI + Appointment</div>
           </div>
         </section>
 
         <section class="panel composer">
-          <textarea id="prompt" placeholder="Ask about an API, schema, endpoint, business capability, or dealership service-lane workflow..."></textarea>
+          <textarea id="prompt" placeholder="Ask about an API, schema, endpoint, business capability, workflow, or architecture boundary..."></textarea>
           <div class="toolbar">
             <div class="toolbar-left">
               <button class="btn" id="sendBtn" onclick="send()">Ask AI</button>
@@ -599,7 +634,7 @@
         <div class="inspector-header">
           <div class="eyebrow">Live Inspector</div>
           <div class="inspector-title" id="inspectorTitle">No selection yet</div>
-          <div class="inspector-sub" id="inspectorSub">Select a capability, schema, or endpoint to inspect rich details without replacing the main response.</div>
+          <div class="inspector-sub" id="inspectorSub">Select a capability, schema, or endpoint to inspect rich details.</div>
           <div class="progress-note" id="progressNote"></div>
         </div>
         <div class="inspector-body">
@@ -628,13 +663,12 @@
     </div>
   </div>
 
-  <!-- Capability Modal -->
   <div id="capabilityModal" class="modal">
     <div class="modal-card">
       <div class="modal-top">
         <div>
           <div class="modal-title" id="capabilityModalTitle">Business Capability</div>
-          <div class="inspector-sub" id="capabilityModalSub">Advisor-facing guidance</div>
+          <div class="inspector-sub" id="capabilityModalSub">Audience-aware guidance</div>
         </div>
         <button class="close-btn" onclick="closeCapabilityModal()">Close</button>
       </div>
@@ -644,6 +678,15 @@
 
   <script>
     let lastRawAnswer = '';
+    let currentAudience = 'business';
+
+    function setAudience(audience) {
+      currentAudience = audience;
+      document.querySelectorAll('.audience-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.audience === audience);
+      });
+      setStatus(`Audience set to ${audience}.`);
+    }
 
     function setStatus(text, isError = false) {
       const el = document.getElementById('status');
@@ -658,7 +701,7 @@
 
     function setInspector(title, sub, note = '') {
       document.getElementById('inspectorTitle').textContent = title || 'No selection yet';
-      document.getElementById('inspectorSub').textContent = sub || 'Select a capability, schema, or endpoint to inspect rich details without replacing the main response.';
+      document.getElementById('inspectorSub').textContent = sub || 'Select a capability, schema, or endpoint to inspect rich details.';
       document.getElementById('progressNote').textContent = note || '';
     }
 
@@ -791,7 +834,7 @@
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({ message, audience: currentAudience })
       });
 
       const data = await res.json();
@@ -804,55 +847,84 @@
     }
 
     function openCapabilityModal(item) {
-      document.getElementById('capabilityModalTitle').textContent = item.title || 'Business Capability';
+      const audienceLabel =
+        currentAudience === 'technical' ? 'Technical guidance' :
+        currentAudience === 'architecture' ? 'Architecture guidance' :
+        'Business guidance';
+
+      document.getElementById('capabilityModalTitle').textContent = item.title || 'Capability';
       document.getElementById('capabilityModalSub').textContent =
-        item.workflow_stage || item.description || 'Advisor-facing guidance';
+        (item.workflow_stage || item.description || '') + ' • ' + audienceLabel;
 
       const advisorActions = Array.isArray(item.advisor_actions)
         ? item.advisor_actions.map(a => '<li>' + escapeHtml(a) + '</li>').join('')
         : '';
 
+      let middleSection = '';
+      if (currentAudience === 'technical') {
+        middleSection =
+          '<div class="section-card">' +
+            '<div class="section-title">Technical Notes</div>' +
+            '<div class="section-body">' + formatSectionBody(item.technical_notes || 'No technical notes available.') + '</div>' +
+          '</div>' +
+          '<div class="section-card">' +
+            '<div class="section-title">Data Model Notes</div>' +
+            '<div class="section-body">' + formatSectionBody(item.data_model_notes || 'No data model notes available.') + '</div>' +
+          '</div>' +
+          '<div class="section-card">' +
+            '<div class="section-title">Integration Notes</div>' +
+            '<div class="section-body">' + formatSectionBody(item.integration_notes || 'No integration notes available.') + '</div>' +
+          '</div>';
+      } else if (currentAudience === 'architecture') {
+        middleSection =
+          '<div class="section-card">' +
+            '<div class="section-title">Architecture Relevance</div>' +
+            '<div class="section-body">' + formatSectionBody(item.integration_notes || 'No architecture notes available.') + '</div>' +
+          '</div>' +
+          '<div class="section-card">' +
+            '<div class="section-title">Data Boundary Notes</div>' +
+            '<div class="section-body">' + formatSectionBody(item.data_model_notes || 'No data boundary notes available.') + '</div>' +
+          '</div>';
+      } else {
+        middleSection =
+          '<div class="section-card">' +
+            '<div class="section-title">Business Guidance</div>' +
+            '<div class="section-body">' + formatSectionBody(item.business_guidance || 'No business guidance available.') + '</div>' +
+          '</div>' +
+          '<div class="cap-grid">' +
+            '<div class="section-card">' +
+              '<div class="section-title">Workflow Stage</div>' +
+              '<div class="section-body">' + formatSectionBody(item.workflow_stage || 'Not specified') + '</div>' +
+            '</div>' +
+            '<div class="section-card">' +
+              '<div class="section-title">Customer Impact</div>' +
+              '<div class="section-body">' + formatSectionBody(item.customer_impact || 'Not specified') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="section-card">' +
+            '<div class="section-title">Advisor Actions</div>' +
+            '<div class="section-body">' + (advisorActions ? '<ul>' + advisorActions + '</ul>' : 'No advisor actions provided.') + '</div>' +
+          '</div>';
+      }
+
       const body =
         '<div class="section-card">' +
-          '<div class="section-title">' + escapeHtml(item.title || 'Business Capability') + '</div>' +
+          '<div class="section-title">' + escapeHtml(item.title || 'Capability') + '</div>' +
           '<div class="section-body">' + formatSectionBody(item.description || '') + '</div>' +
         '</div>' +
-
-        '<div class="section-card">' +
-          '<div class="section-title">Business Guidance</div>' +
-          '<div class="section-body">' + formatSectionBody(item.business_guidance || 'No detailed business guidance available yet.') + '</div>' +
-        '</div>' +
-
-        '<div class="cap-grid">' +
-          '<div class="section-card">' +
-            '<div class="section-title">Workflow Stage</div>' +
-            '<div class="section-body">' + formatSectionBody(item.workflow_stage || 'Not specified') + '</div>' +
-          '</div>' +
-          '<div class="section-card">' +
-            '<div class="section-title">Customer Impact</div>' +
-            '<div class="section-body">' + formatSectionBody(item.customer_impact || 'Not specified') + '</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="section-card">' +
-          '<div class="section-title">Advisor Actions</div>' +
-          '<div class="section-body">' +
-            (advisorActions ? '<ul>' + advisorActions + '</ul>' : 'No advisor actions provided.') +
-          '</div>' +
-        '</div>' +
-
+        middleSection +
         '<div class="section-card">' +
           '<div class="section-title">Explore Further</div>' +
           '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-            '<button class="ghost" onclick="ask(\'' + escapeHtml(item.prompt || item.title || '') + '\'); closeCapabilityModal();">Deep Explanation</button>' +
-            '<button class="ghost" onclick="ask(\'Show schemas related to ' + escapeHtml(item.title || '') + '\'); closeCapabilityModal();">Related Schemas</button>' +
-            '<button class="ghost" onclick="ask(\'Show example endpoints related to ' + escapeHtml(item.title || '') + '\'); closeCapabilityModal();">Related Endpoints</button>' +
+            '<button class="ghost-mini" onclick="ask(\'' + escapeHtml(item.prompt || item.title || '') + '\'); closeCapabilityModal();">Deep Explanation</button>' +
+            '<button class="ghost-mini" onclick="ask(\'Show schemas related to ' + escapeHtml(item.title || '') + '\'); closeCapabilityModal();">Related Schemas</button>' +
+            '<button class="ghost-mini" onclick="ask(\'Show example endpoints related to ' + escapeHtml(item.title || '') + '\'); closeCapabilityModal();">Related Endpoints</button>' +
           '</div>' +
         '</div>';
 
       document.getElementById('capabilityModalBody').innerHTML = body;
       document.getElementById('capabilityModal').classList.add('active');
-      setInspector(item.title || 'Business Capability', item.workflow_stage || item.description || 'Advisor-facing guidance');
+      setInspector(item.title || 'Capability', audienceLabel);
     }
 
     async function send() {
@@ -884,14 +956,14 @@
         renderObjectCards('endpointCards', data.endpoint_cards || [], 'endpoint-card', (item) => ask(item.prompt || item.title || ''));
 
         renderStringCards('executivePrompts', [
-          'Give me an executive overview of the Appointment API',
-          'Give me an executive overview of the Multi-Point Inspection API',
-          'Show me the business capabilities of the Multi-Point Inspection API for a dealership service advisor',
-          'Show me the business capabilities of the Appointment API for a dealership service advisor',
-          'Explain how the Appointment API fits into the dealer service journey'
+          'Give me an overview of the Appointment API',
+          'Give me an overview of the Multi-Point Inspection API',
+          'Show me the business capabilities of the Multi-Point Inspection API',
+          'Show me the business capabilities of the Appointment API',
+          'Show me the schemas of the Multi-Point Inspection API'
         ], 'play-card');
 
-        const note = data.progressive ? 'Core experience loaded; MCP enrichment may be partial.' : 'Rich view loaded.';
+        const note = `Audience: ${data.audience || currentAudience}`;
         setInspector(data.tool_name || 'Result loaded', 'Inspector content updated from the latest response.', note);
         setStatus('Done.');
       } catch (err) {
@@ -910,11 +982,11 @@
     });
 
     renderStringCards('executivePrompts', [
-      'Give me an executive overview of the Appointment API',
-      'Give me an executive overview of the Multi-Point Inspection API',
-      'Show me the business capabilities of the Multi-Point Inspection API for a dealership service advisor',
-      'Show me the business capabilities of the Appointment API for a dealership service advisor',
-      'Explain how the Appointment API fits into the dealer service journey'
+      'Give me an overview of the Appointment API',
+      'Give me an overview of the Multi-Point Inspection API',
+      'Show me the business capabilities of the Multi-Point Inspection API',
+      'Show me the business capabilities of the Appointment API',
+      'Show me the schemas of the Multi-Point Inspection API'
     ], 'play-card');
   </script>
 </body>

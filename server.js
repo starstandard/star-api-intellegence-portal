@@ -836,7 +836,7 @@ Open a schema card or ask for a specific schema by name.`;
 }
 
 async function buildEndpointResponse(domain, message, audience) {
-  const ops = await safeListOperations(domain, 8);
+  const ops = await safeListOperations(domain, 5);
 
   let answer;
   try {
@@ -857,7 +857,7 @@ Write a concise answer with:
 2. Key endpoint details
 3. Useful next steps`
       }),
-      9000,
+      15000,
       'OpenAI endpoint answer generation'
     );
 
@@ -867,10 +867,10 @@ Write a concise answer with:
 Representative endpoints for the ${domain} API are shown in the inspector.
 
 2. Key endpoint details
-Use the endpoint cards to inspect operations and business purpose.
+These endpoints represent the main operation families for the domain and can be used to understand how clients interact with the API.
 
 3. Useful next steps
-Click an endpoint card or ask for a specific operation.`;
+Inspect the endpoint cards, switch to Technical mode for implementation-oriented reading, or ask for a specific operation, method, or path.`;
   }
 
   return {

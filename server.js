@@ -225,6 +225,12 @@ function normalizeEndpointTitle(endpointTitle = '') {
   return canonicalizeEndpointAlias(normalizeEndpointText(endpointTitle));
 }
 
+function normalizePathForMatch(routePath = '') {
+  return canonicalizeEndpointAlias(String(routePath).toUpperCase())
+    .replace(/\{[^}]+\}/g, '{PARAM}')
+    .replace(/\/+$/, '');
+}
+
 function detectDomainFromEndpoint(message = '') {
   const m = normalizeLooseText(message);
 
@@ -493,6 +499,11 @@ function getOpenApiOperationsForDomain(domain) {
   return ops;
 }
 
+function getOpenApiSchemaMap() {
+  const spec = getOpenApiSpec();
+  return spec?.components?.schemas || {};
+}
+
 function collectSchemaNamesFromRefs(value, acc = new Set()) {
   if (!value || typeof value !== 'object') return acc;
 
@@ -506,11 +517,6 @@ function collectSchemaNamesFromRefs(value, acc = new Set()) {
   }
 
   return acc;
-}
-
-function getOpenApiSchemaMap() {
-  const spec = getOpenApiSpec();
-  return spec?.components?.schemas || {};
 }
 
 function getOpenApiSchemasForDomain(domain) {
@@ -543,9 +549,7 @@ function findOpenApiSchemaByName(schemaName) {
   if (!target) return null;
 
   for (const [name, schema] of Object.entries(schemaMap)) {
-    if (name.toLowerCase() === target) {
-      return { name, raw: schema };
-    }
+    if (name.toLowerCase() === target) return { name, raw: schema };
   }
 
   for (const [name, schema] of Object.entries(schemaMap)) {
@@ -567,10 +571,11 @@ function findOpenApiEndpoint(endpointTitle) {
 
   const method = normalizedTarget.slice(0, spaceIndex);
   const routePath = normalizedTarget.slice(spaceIndex + 1);
+  const targetNormalized = normalizePathForMatch(routePath);
 
   for (const [p, pathItem] of Object.entries(spec.paths)) {
-    const normalizedPath = normalizeEndpointTitle(`${method} ${p}`);
-    if (normalizedPath !== `${method} ${routePath}`) continue;
+    const candidateNormalized = normalizePathForMatch(p);
+    if (candidateNormalized !== targetNormalized) continue;
 
     const op = pathItem?.[method.toLowerCase()];
     if (!op) continue;
@@ -585,353 +590,142 @@ function findOpenApiEndpoint(endpointTitle) {
   return null;
 }
 
-/* --------------------------------------------------
- * BUILT-IN CONTENT
- * -------------------------------------------------- */
-
-const DOMAIN_CONFIG = {
-  appointment: {
-    business_overview: `1. What it is
-The Appointment API represents the dealership service scheduling and intake layer. It helps coordinate customer bookings, requested services, timing expectations, and operational readiness before the vehicle enters the service lane.
-
-2. Core concepts
-The API centers on the service appointment as the planning object that connects customer intent, vehicle context, dealership availability, and requested work.
-
-3. Main resources
-Typical resources include the appointment itself, requested services, customer and vehicle references, timing details, and status information needed by dealership systems.
-
-4. Typical workflow
-A customer books service, the dealership validates the request, the advisor confirms timing and service intent, and the service lane uses the appointment context to prepare intake and execution.
-
-5. What to explore next
-Look at business capabilities, representative endpoints, and schemas related to scheduling, intake, and service preparation.`,
-    technical_overview: `1. What it is
-The Appointment API is the scheduling and intake domain for dealership service operations. It models appointment creation, requested service context, party and vehicle references, timing, and workflow state.
-
-2. Technical model
-A typical implementation treats Appointment as a bounded-context resource with references to customer, vehicle, requested services, and scheduling metadata. The API helps move from customer intent into executable service-lane context.
-
-3. Resource families
-Typical technical resources include appointment entities, request details, time windows, references, and status fields needed for intake orchestration.
-
-4. Integration concerns
-Technical consumers care about identifiers, party and vehicle references, status transitions, and how appointment context flows into downstream service systems.
-
-5. What to explore next
-Inspect schema cards, endpoint cards, required fields, and object relationships.`,
-    architecture_overview: `1. Bounded context role
-The Appointment API sits at the front of the dealership service journey. It owns service-booking and pre-intake coordination concerns.
-
-2. Boundary
-Its responsibility is not repair execution or detailed inspection results. Its role is to create the operational context that downstream domains consume.
-
-3. Cross-domain relationships
-Appointment typically connects to customer, vehicle, scheduling, intake, and downstream service execution contexts.
-
-4. Architectural significance
-This domain is valuable because it separates scheduling intent from execution concerns while still providing the references needed for downstream orchestration.
-
-5. What to explore next
-Review bounded-context relationships, key references, and how Appointment feeds inspection and repair workflows.`
-  },
-  'multi-point-inspection': {
-    business_overview: `1. What it is
-The Multi-Point Inspection API is a dealership service workflow domain that supports structured vehicle health checks. It covers the lifecycle from launching an inspection through technician findings, recommendations, customer decisions, and final completion.
-
-2. Core concepts
-The domain revolves around the inspection itself, what is being inspected, what was found, and what action should be recommended or approved.
-
-3. Main resources
-Typical resources include the inspection record, findings, condition evidence, media, recommendations, approval outcomes, and workflow status.
-
-4. Typical workflow
-An inspection is started from service intake or repair-order context. The technician records findings and supporting evidence. The advisor reviews the results, prepares recommendations, communicates with the customer, captures approvals or declines, and moves approved work into execution.
-
-5. What to explore next
-Review business capabilities, workflow stages, representative endpoints, and schemas related to findings, recommendations, approvals, and inspection completion.`,
-    technical_overview: `1. What it is
-The Multi-Point Inspection API is the structured inspection domain for dealership vehicle health checks. It models the inspection lifecycle, findings, media, recommendations, and decision outcomes.
-
-2. Technical model
-Technical consumers should think in terms of inspection entities, finding collections, evidence/media attachments, recommendation structures, and approval or completion states.
-
-3. Resource families
-Common resource families include inspection records, line-item findings, media or attachments, recommendation artifacts, customer decision objects, and workflow status indicators.
-
-4. Integration concerns
-Developers care about how inspection context is created, how findings are represented, how recommendations connect to actionable work, and how approval outcomes are captured for downstream execution.
-
-5. What to explore next
-Inspect endpoints, schema groups, object relationships, identifiers, and how inspection data flows into service execution contexts.`,
-    architecture_overview: `1. Bounded context role
-The Multi-Point Inspection API owns structured inspection and recommendation workflow within the dealership service domain.
-
-2. Boundary
-Its responsibility is not full appointment scheduling or full repair-order execution. It sits between intake/service context and downstream execution decisions.
-
-3. Cross-domain relationships
-MPI usually depends on upstream intake, visit, or repair-order context and feeds downstream recommendation, approval, and execution processes.
-
-4. Architectural significance
-This domain is important because it transforms technician-level observations into customer-facing service decisions while preserving operational traceability.
-
-5. What to explore next
-Review relationships between inspection, findings, recommendations, approvals, and execution-oriented downstream systems.`
-  }
-};
-
-function getAudienceOverview(domain, audience) {
-  const cfg = DOMAIN_CONFIG[domain];
-  if (!cfg) return 'No overview available.';
-  if (audience === 'technical') return cfg.technical_overview;
-  if (audience === 'architecture') return cfg.architecture_overview;
-  return cfg.business_overview;
+function dereferenceSchemaRef(ref) {
+  if (typeof ref !== 'string') return null;
+  const match = ref.match(/#\/components\/schemas\/(.+)$/);
+  if (!match?.[1]) return null;
+  const name = match[1];
+  const schema = getOpenApiSchemaMap()[name];
+  if (!schema) return null;
+  return { name, raw: schema };
 }
 
-function getBuiltInCapabilityCards(domain) {
-  if (domain === 'appointment') {
-    return [
-      {
-        title: 'Schedule appointment',
-        description: 'Create and manage service appointments for customers and vehicles.',
-        business_guidance: 'This capability covers the initial booking process and represents the front door into service operations.',
-        advisor_actions: ['Review requested services and timing', 'Confirm customer and vehicle context', 'Make sure appointment data supports intake readiness'],
-        customer_impact: 'Customers get a clearer booking experience and more accurate service expectations.',
-        workflow_stage: 'Scheduling',
-        technical_notes: 'Developers should focus on appointment identifiers, requested service structures, time windows, and party or vehicle references.',
-        data_model_notes: 'The core model typically includes appointment identity, service intent, scheduling metadata, and supporting references.',
-        integration_notes: 'This capability commonly feeds service-lane preparation, intake workflows, and downstream service domains.',
-        prompt: 'Explain how to schedule and manage appointments in the Appointment API'
-      },
-      {
-        title: 'Confirm service needs',
-        description: 'Validate requested services, timing, and customer expectations.',
-        business_guidance: 'This capability helps the dealership turn a raw booking into an operationally useful service request.',
-        advisor_actions: ['Validate requested work', 'Check timing and operational fit', 'Reduce ambiguity before service intake'],
-        customer_impact: 'Customers receive more accurate service planning and fewer surprises at intake.',
-        workflow_stage: 'Pre-intake validation',
-        technical_notes: 'Technical consumers should examine how requested services, notes, and appointment state are represented and updated.',
-        data_model_notes: 'This area often involves validation rules, optional versus required fields, and how pre-intake details are normalized.',
-        integration_notes: 'This step often influences downstream systems that consume intake-ready appointment context.',
-        prompt: 'Explain how a service advisor confirms service needs using the Appointment API'
-      }
-    ];
-  }
-
-  if (domain === 'multi-point-inspection') {
-    return [
-      {
-        title: 'Start inspection workflow',
-        description: 'Begin the MPI process from intake, appointment context, or repair-order workflow.',
-        business_guidance: 'This capability launches the inspection lifecycle and provides technicians and advisors a common workflow anchor.',
-        advisor_actions: ['Initiate inspection from service context', 'Ensure the inspection is tied to the right vehicle and visit', 'Use the inspection as the operational anchor for downstream findings'],
-        customer_impact: 'Customers benefit from a structured and traceable inspection process.',
-        workflow_stage: 'Inspection initiation',
-        technical_notes: 'Technical consumers should examine how inspection identity is created, what upstream references are required, and how initialization state is modeled.',
-        data_model_notes: 'The core model usually includes inspection identifiers, visit or vehicle references, workflow state, and optional linkage to upstream intake context.',
-        integration_notes: 'This capability often bridges appointment, visit, or repair-order context into the inspection domain.',
-        prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API'
-      },
-      {
-        title: 'Review findings and media',
-        description: 'Review technician findings, notes, photos, and condition evidence.',
-        business_guidance: 'This capability is where raw technician observations become advisor-usable business information.',
-        advisor_actions: ['Review condition findings', 'Use media and notes as supporting evidence', 'Translate technical observations into customer-facing explanation'],
-        customer_impact: 'Customers receive clearer, evidence-based explanations of vehicle condition.',
-        workflow_stage: 'Findings review',
-        technical_notes: 'Technical teams should examine how findings are represented, how media links are attached, and how condition evidence is structured.',
-        data_model_notes: 'The model often includes finding identity, severity or status, notes, media associations, and structured inspection result fields.',
-        integration_notes: 'This capability commonly feeds recommendation generation, customer communication, and archival workflows.',
-        prompt: 'Explain how to review findings and media in the multi-point-inspection API'
-      },
-      {
-        title: 'Capture customer approval',
-        description: 'Record customer decisions, approvals, and communication outcomes.',
-        business_guidance: 'This capability captures the business outcome of the advisor-customer interaction and determines what work moves forward.',
-        advisor_actions: ['Record approvals and declines', 'Track customer communication outcomes', 'Use approval results to determine next workflow step'],
-        customer_impact: 'Customers experience a clearer decision process and better documentation of their choices.',
-        workflow_stage: 'Decision capture',
-        technical_notes: 'Technical teams should inspect approval state, decline/approve semantics, and how decision artifacts are attached to recommendation structures.',
-        data_model_notes: 'Common model elements include approval outcomes, timestamps, decision notes, and references to recommendation or finding entities.',
-        integration_notes: 'Approval outcomes are often consumed by execution, customer-history, and reporting flows.',
-        prompt: 'Explain how customer approval works in the multi-point-inspection API'
-      }
-    ];
-  }
-
-  return [];
-}
-
-function getBuiltInWorkflowMap(domain) {
-  if (domain === 'appointment') {
-    return [
-      { step: 'Schedule appointment', detail: 'Customer booking and advisor intake', prompt: 'Explain the scheduling flow of the Appointment API' },
-      { step: 'Confirm service needs', detail: 'Advisor validates request and timing', prompt: 'Explain advisor validation workflow in the Appointment API' },
-      { step: 'Prepare service lane', detail: 'Appointment data supports dealer operations', prompt: 'Explain how the Appointment API supports service-lane preparation' }
-    ];
-  }
-
-  if (domain === 'multi-point-inspection') {
-    return [
-      { step: 'Start inspection', detail: 'Launch MPI workflow tied to intake or RO context', prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API' },
-      { step: 'Capture findings', detail: 'Technician records results, notes, and media', prompt: 'Explain how findings are captured in the multi-point-inspection API' },
-      { step: 'Build recommendations', detail: 'Advisor prepares customer-facing repair guidance', prompt: 'Explain how recommendations are built in the multi-point-inspection API' },
-      { step: 'Get approval', detail: 'Customer decisions are captured and tracked', prompt: 'Explain customer approval flow in the multi-point-inspection API' }
-    ];
-  }
-
-  return [];
-}
-
-function getBuiltInSchemaCards(domain) {
-  if (domain === 'appointment') {
-    return [
-      { title: 'Appointment', description: 'Core appointment entity for dealership service scheduling.', prompt: 'Show schema Appointment in the Appointment API' },
-      { title: 'RequestedService', description: 'Represents requested service work tied to an appointment.', prompt: 'Show schema RequestedService in the Appointment API' },
-      { title: 'AppointmentStatus', description: 'Represents appointment lifecycle or state.', prompt: 'Show schema AppointmentStatus in the Appointment API' },
-      { title: 'VehicleReference', description: 'Vehicle identity and linkage used by the appointment domain.', prompt: 'Show schema VehicleReference in the Appointment API' },
-      { title: 'PartyReference', description: 'Customer or related party linkage used in the appointment domain.', prompt: 'Show schema PartyReference in the Appointment API' },
-      { title: 'TimeSlot', description: 'Scheduling or timing structure for appointment planning.', prompt: 'Show schema TimeSlot in the Appointment API' }
-    ];
-  }
-
-  if (domain === 'multi-point-inspection') {
-    return [
-      { title: 'Inspection', description: 'Core inspection entity representing the inspection lifecycle.', prompt: 'Show schema Inspection in the multi-point-inspection API' },
-      { title: 'Finding', description: 'Represents an inspection finding, condition, or observed result.', prompt: 'Show schema Finding in the multi-point-inspection API' },
-      { title: 'Recommendation', description: 'Represents advisor-ready or technician-derived recommended work.', prompt: 'Show schema Recommendation in the multi-point-inspection API' },
-      { title: 'Approval', description: 'Captures customer approval or decline decisions.', prompt: 'Show schema Approval in the multi-point-inspection API' },
-      { title: 'InspectionMedia', description: 'Represents photos, videos, or other evidence attached to findings.', prompt: 'Show schema InspectionMedia in the multi-point-inspection API' },
-      { title: 'InspectionStatus', description: 'Represents workflow or lifecycle state of an inspection.', prompt: 'Show schema InspectionStatus in the multi-point-inspection API' },
-      { title: 'InspectionManifest', description: 'Defines inspection structure or checklist context.', prompt: 'Show schema InspectionManifest in the multi-point-inspection API' },
-      { title: 'InspectionLine', description: 'Represents an inspection line or checklist entry.', prompt: 'Show schema InspectionLine in the multi-point-inspection API' }
-    ];
-  }
-
-  return [];
-}
-
-function getBuiltInEndpointCards(domain) {
-  if (domain === 'appointment') {
-    return [
-      { title: 'GET /appointments', description: 'List or search appointments.', prompt: 'Explain GET /appointments for the Appointment API' },
-      { title: 'POST /appointments', description: 'Create a new appointment.', prompt: 'Explain POST /appointments for the Appointment API' },
-      { title: 'GET /appointments/{id}', description: 'Retrieve a specific appointment.', prompt: 'Explain GET /appointments/{id} for the Appointment API' },
-      { title: 'PATCH /appointments/{id}', description: 'Update an existing appointment.', prompt: 'Explain PATCH /appointments/{id} for the Appointment API' }
-    ];
-  }
-
-  if (domain === 'multi-point-inspection') {
-    return [
-      { title: 'GET /inspections', description: 'List or search inspections.', prompt: 'Explain GET /inspections for the multi-point-inspection API' },
-      { title: 'POST /inspections', description: 'Create or start an inspection.', prompt: 'Explain POST /inspections for the multi-point-inspection API' },
-      { title: 'GET /inspections/{id}', description: 'Retrieve a specific inspection.', prompt: 'Explain GET /inspections/{id} for the multi-point-inspection API' },
-      { title: 'GET /inspections/{id}/findings', description: 'Retrieve findings tied to an inspection.', prompt: 'Explain GET /inspections/{id}/findings for the multi-point-inspection API' },
-      { title: 'POST /inspections/{id}/recommendations', description: 'Create or record recommendations for an inspection.', prompt: 'Explain POST /inspections/{id}/recommendations for the multi-point-inspection API' }
-    ];
-  }
-
-  return [];
-}
-
-function getBuiltInSchemaDetails(domain, schemaName) {
-  const normalized = String(schemaName || '').trim().toLowerCase();
-
-  if (domain === 'appointment' && normalized === 'appointment') {
+function extractRelatedSchemasFromOperation(op) {
+  const found = collectSchemaNamesFromRefs(op, new Set());
+  return Array.from(found).map((name) => {
+    const schema = getOpenApiSchemaMap()[name];
     return {
-      body: `1. Direct answer
-Appointment is the core entity of the Appointment API and represents a dealership service booking or planned visit.
-
-2. Key schema details
-This schema usually contains customer and vehicle references, service intent, schedule context, and lifecycle state.
-
-3. Why it matters
-It is the anchor object for the scheduling and intake domain.`
+      title: name,
+      description: schema?.description || 'Related OpenAPI schema',
+      prompt: `Show schema ${name}`
     };
-  }
-
-  if (domain === 'multi-point-inspection' && normalized === 'inspection') {
-    return {
-      body: `1. Direct answer
-Inspection is the core entity of the Multi-Point Inspection API. It represents the overall inspection lifecycle for a vehicle visit or service event.
-
-2. Key schema details
-This schema typically acts as the parent object for inspection status, findings, recommendations, media relationships, and workflow state.
-
-3. Why it matters
-This object is the main entry point for understanding how the inspection is created, tracked, and completed across the service workflow.`
-    };
-  }
-
-  return null;
+  });
 }
 
-function getBuiltInRawSchema(domain, schemaName) {
-  const normalized = String(schemaName || '').trim().toLowerCase();
-
-  if (domain === 'multi-point-inspection' && normalized === 'inspection') {
-    return {
-      type: 'object',
-      required: ['inspection_id'],
-      properties: {
-        inspection_id: { type: 'string' },
-        inspection_status: { $ref: '#/components/schemas/InspectionStatus' },
-        findings: { type: 'array', items: { $ref: '#/components/schemas/Finding' } },
-        recommendations: { type: 'array', items: { $ref: '#/components/schemas/Recommendation' } }
-      }
-    };
-  }
-
-  if (domain === 'appointment' && normalized === 'appointment') {
-    return {
-      type: 'object',
-      required: ['appointment_id'],
-      properties: {
-        appointment_id: { type: 'string' },
-        appointment_status: { $ref: '#/components/schemas/AppointmentStatus' },
-        requested_services: { type: 'array', items: { $ref: '#/components/schemas/RequestedService' } }
-      }
-    };
-  }
-
-  return null;
+function extractParametersFromOperation(op) {
+  const parameters = Array.isArray(op?.parameters) ? op.parameters : [];
+  return parameters.map((p) => ({
+    name: p.name || '',
+    in: p.in || '',
+    required: Boolean(p.required),
+    description: p.description || '',
+    schema: p.schema || null,
+    example: p.example ?? p.schema?.example ?? null
+  }));
 }
 
-function getBuiltInEndpointDetail(domain, endpointTitle) {
-  const key = normalizeEndpointTitle(endpointTitle);
+function findPrimaryJsonContent(contentObj = {}) {
+  if (!contentObj || typeof contentObj !== 'object') return null;
+  return (
+    contentObj['application/json'] ||
+    contentObj['application/*+json'] ||
+    Object.values(contentObj)[0] ||
+    null
+  );
+}
 
-  const builtIn = {
-    appointment: {
-      'GET /APPOINTMENTS': `1. Direct answer
-GET /appointments lists or searches appointments.
+function buildSampleFromSchema(schema, depth = 0) {
+  if (!schema || depth > 3) return null;
 
-2. Key endpoint details
-This endpoint supports schedule views, search flows, and operational appointment lookup.
+  if (schema.example !== undefined) return schema.example;
+  if (Array.isArray(schema.examples) && schema.examples.length) return schema.examples[0];
 
-3. Why it matters
-It is the main collection endpoint for the Appointment API.`
-    },
-    'multi-point-inspection': {
-      'GET /INSPECTIONS': `1. Direct answer
-GET /inspections lists or searches inspection records.
+  if (schema.$ref) {
+    const deref = dereferenceSchemaRef(schema.$ref);
+    return deref ? buildSampleFromSchema(deref.raw, depth + 1) : null;
+  }
 
-2. Key endpoint details
-This endpoint is useful for retrieving inspection collections, filtering workflow state, and supporting advisor or operational views of inspection activity.
-
-3. Why it matters
-It gives technical consumers a collection-level entry point into the MPI domain.`,
-      'GET /INSPECTIONS/{ID}': `1. Direct answer
-GET /inspections/{id} retrieves a specific inspection.
-
-2. Key endpoint details
-This endpoint is used to inspect the full state of a single inspection, including status, relationships, and downstream context.
-
-3. Why it matters
-It is the most direct technical path for reading a specific MPI entity.`
+  if (schema.type === 'object' || schema.properties) {
+    const out = {};
+    for (const [key, prop] of Object.entries(schema.properties || {})) {
+      const sample = buildSampleFromSchema(prop, depth + 1);
+      out[key] = sample !== null ? sample : '<value>';
     }
-  };
+    return out;
+  }
 
-  return builtIn[domain]?.[key] || null;
+  if (schema.type === 'array') {
+    const item = buildSampleFromSchema(schema.items, depth + 1);
+    return [item !== null ? item : '<item>'];
+  }
+
+  if (schema.enum?.length) return schema.enum[0];
+  if (schema.format === 'date-time') return '2026-03-25T12:00:00Z';
+  if (schema.format === 'date') return '2026-03-25';
+  if (schema.format === 'uri') return 'https://example.com/resource';
+
+  switch (schema.type) {
+    case 'string':
+      return schema.title ? `<${schema.title}>` : '<string>';
+    case 'integer':
+    case 'number':
+      return 0;
+    case 'boolean':
+      return true;
+    default:
+      return null;
+  }
+}
+
+function extractRequestExampleFromOperation(op) {
+  const content = findPrimaryJsonContent(op?.requestBody?.content);
+  if (!content) return null;
+
+  if (content.example !== undefined) return content.example;
+
+  if (content.examples && typeof content.examples === 'object') {
+    const first = Object.values(content.examples)[0];
+    if (first?.value !== undefined) return first.value;
+  }
+
+  return buildSampleFromSchema(content.schema);
+}
+
+function extractResponseExampleFromOperation(op) {
+  const responses = op?.responses || {};
+  const preferred = responses['200'] || responses['201'] || responses['202'] || Object.values(responses)[0];
+  if (!preferred) return null;
+
+  const content = findPrimaryJsonContent(preferred.content);
+  if (!content) return null;
+
+  if (content.example !== undefined) return content.example;
+
+  if (content.examples && typeof content.examples === 'object') {
+    const first = Object.values(content.examples)[0];
+    if (first?.value !== undefined) return first.value;
+  }
+
+  return buildSampleFromSchema(content.schema);
+}
+
+function extractResponseSchemaCardFromOperation(op) {
+  const responses = op?.responses || {};
+  const preferred = responses['200'] || responses['201'] || responses['202'] || Object.values(responses)[0];
+  if (!preferred) return [];
+
+  const content = findPrimaryJsonContent(preferred.content);
+  if (!content?.schema) return [];
+
+  const found = collectSchemaNamesFromRefs(content.schema, new Set());
+  return Array.from(found).map((name) => {
+    const schema = getOpenApiSchemaMap()[name];
+    return {
+      title: name,
+      description: schema?.description || 'Response schema',
+      prompt: `Show schema ${name}`
+    };
+  });
 }
 
 /* --------------------------------------------------
@@ -1318,6 +1112,13 @@ async function buildSchemaDetailResponse(domain, schemaName, audience) {
 
   const builtIn = getBuiltInSchemaDetails(domain, schemaName);
   const rawSchema = liveSchema || getBuiltInRawSchema(domain, schemaName);
+  const relatedSchemas = rawSchema
+    ? Array.from(collectSchemaNamesFromRefs(rawSchema, new Set())).map((name) => ({
+        title: name,
+        description: getOpenApiSchemaMap()[name]?.description || 'Related schema',
+        prompt: `Show schema ${name}`
+      }))
+    : [];
 
   let answer;
   if (rawSchema) {
@@ -1372,6 +1173,7 @@ Inspect related schema cards or ask for endpoints tied to this schema.`;
     audience,
     raw_schema: rawSchema,
     raw_schema_format: 'json',
+    related_schema_cards: relatedSchemas,
     capability_cards: getBuiltInCapabilityCards(domain),
     endpoint_cards: getBuiltInEndpointCards(domain),
     schema_cards: getBuiltInSchemaCards(domain),
@@ -1436,8 +1238,21 @@ async function buildEndpointDetailResponse(domain, endpointTitle, audience) {
   const builtIn = getBuiltInEndpointDetail(domain, endpointTitle);
 
   let answer;
+  let parameters = [];
+  let relatedSchemaCards = [];
+  let requestExample = null;
+  let responseExample = null;
+
   if (openApiEndpoint) {
     const op = openApiEndpoint.details;
+    parameters = extractParametersFromOperation(op);
+    relatedSchemaCards = [
+      ...extractRelatedSchemasFromOperation(op),
+      ...extractResponseSchemaCardFromOperation(op)
+    ].filter((item, idx, arr) => arr.findIndex((x) => x.title === item.title) === idx);
+    requestExample = extractRequestExampleFromOperation(op);
+    responseExample = extractResponseExampleFromOperation(op);
+
     answer = `1. Direct answer
 ${openApiEndpoint.method} ${openApiEndpoint.path} is a defined endpoint in the ${domain} API.
 
@@ -1461,6 +1276,10 @@ Inspect related schemas or try again later.`;
     answer,
     sections: extractSections(answer),
     audience,
+    endpoint_parameters: parameters,
+    related_schema_cards: relatedSchemaCards,
+    request_example: requestExample,
+    response_example: responseExample,
     capability_cards: getBuiltInCapabilityCards(domain),
     endpoint_cards: getBuiltInEndpointCards(domain),
     schema_cards: getBuiltInSchemaCards(domain),

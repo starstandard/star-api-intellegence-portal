@@ -245,6 +245,12 @@ function extractRequestedSchemaName(message = '') {
   return null;
 }
 
+function extractRequestedEndpoint(message = '') {
+  const text = String(message || '').trim();
+  const match = text.match(/(GET|POST|PUT|PATCH|DELETE)\s+\/[A-Za-z0-9/_{}-]+/i);
+  return match ? match[0].toUpperCase() : null;
+}
+
 function extractOperations(result) {
   return result?.operations || result?.structuredContent?.operations || [];
 }
@@ -287,6 +293,10 @@ function extractSections(answer) {
   return sections
     .map((s) => ({ title: s.title, body: s.body.join('\n').trim() }))
     .filter((s) => s.title || s.body);
+}
+
+function normalizeEndpointTitle(endpointTitle = '') {
+  return String(endpointTitle).toUpperCase();
 }
 
 /* --------------------------------------------------
@@ -344,148 +354,78 @@ Review bounded-context relationships, key references, and how Appointment feeds 
       {
         title: 'Schedule appointment',
         description: 'Create and manage service appointments for customers and vehicles.',
-        business_guidance:
-          'This capability covers the initial booking process and represents the front door into service operations.',
+        business_guidance: 'This capability covers the initial booking process and represents the front door into service operations.',
         advisor_actions: [
           'Review requested services and timing',
           'Confirm customer and vehicle context',
           'Make sure appointment data supports intake readiness'
         ],
-        customer_impact:
-          'Customers get a clearer booking experience and more accurate service expectations.',
+        customer_impact: 'Customers get a clearer booking experience and more accurate service expectations.',
         workflow_stage: 'Scheduling',
-        technical_notes:
-          'Developers should focus on appointment identifiers, requested service structures, time windows, and party or vehicle references.',
-        data_model_notes:
-          'The core model typically includes appointment identity, service intent, scheduling metadata, and supporting references.',
-        integration_notes:
-          'This capability commonly feeds service-lane preparation, intake workflows, and downstream service domains.',
-        prompt:
-          'Explain how to schedule and manage appointments in the Appointment API'
+        technical_notes: 'Developers should focus on appointment identifiers, requested service structures, time windows, and party or vehicle references.',
+        data_model_notes: 'The core model typically includes appointment identity, service intent, scheduling metadata, and supporting references.',
+        integration_notes: 'This capability commonly feeds service-lane preparation, intake workflows, and downstream service domains.',
+        prompt: 'Explain how to schedule and manage appointments in the Appointment API'
       },
       {
         title: 'Confirm service needs',
         description: 'Validate requested services, timing, and customer expectations.',
-        business_guidance:
-          'This capability helps the dealership turn a raw booking into an operationally useful service request.',
+        business_guidance: 'This capability helps the dealership turn a raw booking into an operationally useful service request.',
         advisor_actions: [
           'Validate requested work',
           'Check timing and operational fit',
           'Reduce ambiguity before service intake'
         ],
-        customer_impact:
-          'Customers receive more accurate service planning and fewer surprises at intake.',
+        customer_impact: 'Customers receive more accurate service planning and fewer surprises at intake.',
         workflow_stage: 'Pre-intake validation',
-        technical_notes:
-          'Technical consumers should examine how requested services, notes, and appointment state are represented and updated.',
-        data_model_notes:
-          'This area often involves validation rules, optional versus required fields, and how pre-intake details are normalized.',
-        integration_notes:
-          'This step often influences downstream systems that consume intake-ready appointment context.',
-        prompt:
-          'Explain how a service advisor confirms service needs using the Appointment API'
+        technical_notes: 'Technical consumers should examine how requested services, notes, and appointment state are represented and updated.',
+        data_model_notes: 'This area often involves validation rules, optional versus required fields, and how pre-intake details are normalized.',
+        integration_notes: 'This step often influences downstream systems that consume intake-ready appointment context.',
+        prompt: 'Explain how a service advisor confirms service needs using the Appointment API'
       },
       {
         title: 'Prepare service lane',
         description: 'Use appointment context to prepare the dealership service workflow.',
-        business_guidance:
-          'This capability connects the appointment to the dealership operating model and helps the service lane prepare before the customer arrives.',
+        business_guidance: 'This capability connects the appointment to the dealership operating model and helps the service lane prepare before the customer arrives.',
         advisor_actions: [
           'Review upcoming appointments',
           'Use appointment data to prepare intake',
           'Coordinate service-lane readiness'
         ],
-        customer_impact:
-          'Customers experience smoother intake and better operational coordination.',
+        customer_impact: 'Customers experience smoother intake and better operational coordination.',
         workflow_stage: 'Service preparation',
-        technical_notes:
-          'Technical teams should look at how appointment data is exposed for operational consumers and how readiness-related status is modeled.',
-        data_model_notes:
-          'Key elements usually include schedule context, requested services, and references needed by intake systems.',
-        integration_notes:
-          'This capability commonly interacts with scheduling, check-in, and service execution contexts.',
-        prompt:
-          'Explain how the Appointment API helps prepare the service lane'
+        technical_notes: 'Technical teams should look at how appointment data is exposed for operational consumers and how readiness-related status is modeled.',
+        data_model_notes: 'Key elements usually include schedule context, requested services, and references needed by intake systems.',
+        integration_notes: 'This capability commonly interacts with scheduling, check-in, and service execution contexts.',
+        prompt: 'Explain how the Appointment API helps prepare the service lane'
       }
     ],
 
     workflow_map: [
-      {
-        step: 'Schedule appointment',
-        detail: 'Customer booking and advisor intake',
-        prompt: 'Explain the scheduling flow of the Appointment API'
-      },
-      {
-        step: 'Confirm service needs',
-        detail: 'Advisor validates request and timing',
-        prompt: 'Explain advisor validation workflow in the Appointment API'
-      },
-      {
-        step: 'Prepare service lane',
-        detail: 'Appointment data supports dealer operations',
-        prompt: 'Explain how the Appointment API supports service-lane preparation'
-      }
+      { step: 'Schedule appointment', detail: 'Customer booking and advisor intake', prompt: 'Explain the scheduling flow of the Appointment API' },
+      { step: 'Confirm service needs', detail: 'Advisor validates request and timing', prompt: 'Explain advisor validation workflow in the Appointment API' },
+      { step: 'Prepare service lane', detail: 'Appointment data supports dealer operations', prompt: 'Explain how the Appointment API supports service-lane preparation' }
     ],
 
     schema_cards: [
-      {
-        title: 'Appointment',
-        description: 'Core appointment entity for dealership service scheduling.',
-        prompt: 'Show schema Appointment in the Appointment API'
-      },
-      {
-        title: 'RequestedService',
-        description: 'Represents requested service work tied to an appointment.',
-        prompt: 'Show schema RequestedService in the Appointment API'
-      },
-      {
-        title: 'AppointmentStatus',
-        description: 'Represents appointment lifecycle or state.',
-        prompt: 'Show schema AppointmentStatus in the Appointment API'
-      },
-      {
-        title: 'VehicleReference',
-        description: 'Vehicle identity and linkage used by the appointment domain.',
-        prompt: 'Show schema VehicleReference in the Appointment API'
-      },
-      {
-        title: 'PartyReference',
-        description: 'Customer or related party linkage used in the appointment domain.',
-        prompt: 'Show schema PartyReference in the Appointment API'
-      },
-      {
-        title: 'TimeSlot',
-        description: 'Scheduling or timing structure for appointment planning.',
-        prompt: 'Show schema TimeSlot in the Appointment API'
-      }
+      { title: 'Appointment', description: 'Core appointment entity for dealership service scheduling.', prompt: 'Show schema Appointment in the Appointment API' },
+      { title: 'RequestedService', description: 'Represents requested service work tied to an appointment.', prompt: 'Show schema RequestedService in the Appointment API' },
+      { title: 'AppointmentStatus', description: 'Represents appointment lifecycle or state.', prompt: 'Show schema AppointmentStatus in the Appointment API' },
+      { title: 'VehicleReference', description: 'Vehicle identity and linkage used by the appointment domain.', prompt: 'Show schema VehicleReference in the Appointment API' },
+      { title: 'PartyReference', description: 'Customer or related party linkage used in the appointment domain.', prompt: 'Show schema PartyReference in the Appointment API' },
+      { title: 'TimeSlot', description: 'Scheduling or timing structure for appointment planning.', prompt: 'Show schema TimeSlot in the Appointment API' },
+      { title: 'AppointmentNote', description: 'Represents notes or comments attached to the appointment.', prompt: 'Show schema AppointmentNote in the Appointment API' },
+      { title: 'ServiceAdvisorReference', description: 'Represents advisor assignment or linkage.', prompt: 'Show schema ServiceAdvisorReference in the Appointment API' },
+      { title: 'DealerReference', description: 'Represents dealer identity or organizational reference.', prompt: 'Show schema DealerReference in the Appointment API' },
+      { title: 'AppointmentChannel', description: 'Represents appointment booking channel or source.', prompt: 'Show schema AppointmentChannel in the Appointment API' }
     ],
 
     endpoint_cards: [
-      {
-        title: 'GET /appointments',
-        description: 'List or search appointments.',
-        prompt: 'Explain GET /appointments for the Appointment API'
-      },
-      {
-        title: 'POST /appointments',
-        description: 'Create a new appointment.',
-        prompt: 'Explain POST /appointments for the Appointment API'
-      },
-      {
-        title: 'GET /appointments/{id}',
-        description: 'Retrieve a specific appointment.',
-        prompt: 'Explain GET /appointments/{id} for the Appointment API'
-      },
-      {
-        title: 'PATCH /appointments/{id}',
-        description: 'Update an existing appointment.',
-        prompt: 'Explain PATCH /appointments/{id} for the Appointment API'
-      },
-      {
-        title: 'GET /appointments/{id}/requested-services',
-        description: 'View requested services tied to an appointment.',
-        prompt: 'Explain GET /appointments/{id}/requested-services for the Appointment API'
-      }
+      { title: 'GET /appointments', description: 'List or search appointments.', prompt: 'Explain GET /appointments for the Appointment API' },
+      { title: 'POST /appointments', description: 'Create a new appointment.', prompt: 'Explain POST /appointments for the Appointment API' },
+      { title: 'GET /appointments/{id}', description: 'Retrieve a specific appointment.', prompt: 'Explain GET /appointments/{id} for the Appointment API' },
+      { title: 'PATCH /appointments/{id}', description: 'Update an existing appointment.', prompt: 'Explain PATCH /appointments/{id} for the Appointment API' },
+      { title: 'GET /appointments/{id}/requested-services', description: 'View requested services tied to an appointment.', prompt: 'Explain GET /appointments/{id}/requested-services for the Appointment API' }
     ],
 
     schema_details: {
@@ -521,39 +461,6 @@ This can be modeled as a status field, enum-like object, or supporting schema de
 
 3. Why it matters
 Status is important for scheduling flow, intake readiness, and operational coordination.`
-      },
-      VehicleReference: {
-        title: 'VehicleReference',
-        body: `1. Direct answer
-VehicleReference links the appointment to the vehicle being serviced.
-
-2. Key schema details
-It typically contains identifiers and reference information rather than full vehicle domain ownership.
-
-3. Why it matters
-It enables intake, service planning, and downstream vehicle-related workflows.`
-      },
-      PartyReference: {
-        title: 'PartyReference',
-        body: `1. Direct answer
-PartyReference links the appointment to a customer or other relevant party.
-
-2. Key schema details
-It is usually a lightweight reference structure rather than full party ownership.
-
-3. Why it matters
-It supports customer linkage without making Appointment the system of record for party data.`
-      },
-      TimeSlot: {
-        title: 'TimeSlot',
-        body: `1. Direct answer
-TimeSlot represents appointment timing or scheduling structure.
-
-2. Key schema details
-It may define start/end times, windows, or booking-specific scheduling metadata.
-
-3. Why it matters
-It is central to planning and coordinating service operations.`
       }
     },
 
@@ -584,28 +491,50 @@ It is central to planning and coordinating service operations.`
       AppointmentStatus: {
         type: 'string',
         enum: ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled']
-      },
-      VehicleReference: {
-        type: 'object',
-        properties: {
-          vehicle_id: { type: 'string' },
-          vin: { type: 'string' }
-        }
-      },
-      PartyReference: {
-        type: 'object',
-        properties: {
-          party_id: { type: 'string' },
-          party_type: { type: 'string' }
-        }
-      },
-      TimeSlot: {
-        type: 'object',
-        properties: {
-          start_date_time: { type: 'string', format: 'date-time' },
-          end_date_time: { type: 'string', format: 'date-time' }
-        }
       }
+    },
+
+    endpoint_details: {
+      'GET /APPOINTMENTS': `1. Direct answer
+GET /appointments lists or searches appointments.
+
+2. Key endpoint details
+This endpoint supports schedule views, search flows, and operational appointment lookup.
+
+3. Why it matters
+It is the main collection endpoint for the Appointment API.`,
+      'POST /APPOINTMENTS': `1. Direct answer
+POST /appointments creates a new appointment.
+
+2. Key endpoint details
+This endpoint captures booking intent, customer and vehicle context, and requested service details.
+
+3. Why it matters
+It is the main entry point for appointment creation.`,
+      'GET /APPOINTMENTS/{ID}': `1. Direct answer
+GET /appointments/{id} retrieves a specific appointment.
+
+2. Key endpoint details
+This endpoint returns the state and details of one appointment instance.
+
+3. Why it matters
+It is the primary read path for single-appointment lookup.`,
+      'PATCH /APPOINTMENTS/{ID}': `1. Direct answer
+PATCH /appointments/{id} updates an existing appointment.
+
+2. Key endpoint details
+This endpoint is typically used for status updates, timing adjustments, or request refinement.
+
+3. Why it matters
+It supports lifecycle management of appointment entities.`,
+      'GET /APPOINTMENTS/{ID}/REQUESTED-SERVICES': `1. Direct answer
+GET /appointments/{id}/requested-services retrieves requested services tied to an appointment.
+
+2. Key endpoint details
+This endpoint exposes the service intent associated with a booking.
+
+3. Why it matters
+It helps technical users understand how service intent is represented separately from the appointment root.`
     }
   },
 
@@ -659,234 +588,131 @@ Review relationships between inspection, findings, recommendations, approvals, a
       {
         title: 'Start inspection workflow',
         description: 'Begin the MPI process from intake, appointment context, or repair-order workflow.',
-        business_guidance:
-          'This capability launches the inspection lifecycle and provides technicians and advisors a common workflow anchor.',
+        business_guidance: 'This capability launches the inspection lifecycle and provides technicians and advisors a common workflow anchor.',
         advisor_actions: [
           'Initiate inspection from service context',
           'Ensure the inspection is tied to the right vehicle and visit',
           'Use the inspection as the operational anchor for downstream findings'
         ],
-        customer_impact:
-          'Customers benefit from a structured and traceable inspection process.',
+        customer_impact: 'Customers benefit from a structured and traceable inspection process.',
         workflow_stage: 'Inspection initiation',
-        technical_notes:
-          'Technical consumers should examine how inspection identity is created, what upstream references are required, and how initialization state is modeled.',
-        data_model_notes:
-          'The core model usually includes inspection identifiers, visit or vehicle references, workflow state, and optional linkage to upstream intake context.',
-        integration_notes:
-          'This capability often bridges appointment, visit, or repair-order context into the inspection domain.',
-        prompt:
-          'Explain how to start the inspection workflow in the multi-point-inspection API'
+        technical_notes: 'Technical consumers should examine how inspection identity is created, what upstream references are required, and how initialization state is modeled.',
+        data_model_notes: 'The core model usually includes inspection identifiers, visit or vehicle references, workflow state, and optional linkage to upstream intake context.',
+        integration_notes: 'This capability often bridges appointment, visit, or repair-order context into the inspection domain.',
+        prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API'
       },
       {
         title: 'Track inspection progress',
         description: 'Monitor inspection state, technician progress, and workflow status.',
-        business_guidance:
-          'This capability gives advisors visibility into where the inspection stands and when customer-facing follow-up can begin.',
+        business_guidance: 'This capability gives advisors visibility into where the inspection stands and when customer-facing follow-up can begin.',
         advisor_actions: [
           'Monitor inspection lifecycle status',
           'Coordinate timing between technician work and advisor communication',
           'Use progress visibility to manage service-lane flow'
         ],
-        customer_impact:
-          'Customers receive more timely updates and better expectation management.',
+        customer_impact: 'Customers receive more timely updates and better expectation management.',
         workflow_stage: 'Inspection monitoring',
-        technical_notes:
-          'Developers should inspect status models, progress-related fields, and operation families that expose lifecycle transitions.',
-        data_model_notes:
-          'This area often includes workflow status, timestamps, completion indicators, and state transitions.',
-        integration_notes:
-          'Inspection progress is often consumed by advisor tools, dashboards, and customer communication layers.',
-        prompt:
-          'Explain how to track inspection progress in the multi-point-inspection API'
+        technical_notes: 'Developers should inspect status models, progress-related fields, and operation families that expose lifecycle transitions.',
+        data_model_notes: 'This area often includes workflow status, timestamps, completion indicators, and state transitions.',
+        integration_notes: 'Inspection progress is often consumed by advisor tools, dashboards, and customer communication layers.',
+        prompt: 'Explain how to track inspection progress in the multi-point-inspection API'
       },
       {
         title: 'Review findings and media',
         description: 'Review technician findings, notes, photos, and condition evidence.',
-        business_guidance:
-          'This capability is where raw technician observations become advisor-usable business information.',
+        business_guidance: 'This capability is where raw technician observations become advisor-usable business information.',
         advisor_actions: [
           'Review condition findings',
           'Use media and notes as supporting evidence',
           'Translate technical observations into customer-facing explanation'
         ],
-        customer_impact:
-          'Customers receive clearer, evidence-based explanations of vehicle condition.',
+        customer_impact: 'Customers receive clearer, evidence-based explanations of vehicle condition.',
         workflow_stage: 'Findings review',
-        technical_notes:
-          'Technical teams should examine how findings are represented, how media links are attached, and how condition evidence is structured.',
-        data_model_notes:
-          'The model often includes finding identity, severity or status, notes, media associations, and structured inspection result fields.',
-        integration_notes:
-          'This capability commonly feeds recommendation generation, customer communication, and archival workflows.',
-        prompt:
-          'Explain how to review findings and media in the multi-point-inspection API'
+        technical_notes: 'Technical teams should examine how findings are represented, how media links are attached, and how condition evidence is structured.',
+        data_model_notes: 'The model often includes finding identity, severity or status, notes, media associations, and structured inspection result fields.',
+        integration_notes: 'This capability commonly feeds recommendation generation, customer communication, and archival workflows.',
+        prompt: 'Explain how to review findings and media in the multi-point-inspection API'
       },
       {
         title: 'Prepare recommendations',
         description: 'Turn findings into advisor-ready repair recommendations and next steps.',
-        business_guidance:
-          'This capability converts inspection results into action and prepares customer-ready proposals tied to vehicle condition and service priorities.',
+        business_guidance: 'This capability converts inspection results into action and prepares customer-ready proposals tied to vehicle condition and service priorities.',
         advisor_actions: [
           'Turn findings into recommended work',
           'Organize repair guidance by business relevance',
           'Prepare customer-facing next steps'
         ],
-        customer_impact:
-          'Customers receive clearer recommendations and understand why work is being proposed.',
+        customer_impact: 'Customers receive clearer recommendations and understand why work is being proposed.',
         workflow_stage: 'Recommendation building',
-        technical_notes:
-          'Technical consumers should inspect how recommendations relate to findings, how recommended actions are modeled, and whether downstream execution references exist.',
-        data_model_notes:
-          'This layer often contains structured recommendation entities, finding links, optional pricing context, and approval-ready outputs.',
-        integration_notes:
-          'This capability may connect inspection findings to repair planning, pricing, parts, or service execution contexts.',
-        prompt:
-          'Explain how to prepare recommendations in the multi-point-inspection API'
+        technical_notes: 'Technical consumers should inspect how recommendations relate to findings, how recommended actions are modeled, and whether downstream execution references exist.',
+        data_model_notes: 'This layer often contains structured recommendation entities, finding links, optional pricing context, and approval-ready outputs.',
+        integration_notes: 'This capability may connect inspection findings to repair planning, pricing, parts, or service execution contexts.',
+        prompt: 'Explain how to prepare recommendations in the multi-point-inspection API'
       },
       {
         title: 'Capture customer approval',
         description: 'Record customer decisions, approvals, and communication outcomes.',
-        business_guidance:
-          'This capability captures the business outcome of the advisor-customer interaction and determines what work moves forward.',
+        business_guidance: 'This capability captures the business outcome of the advisor-customer interaction and determines what work moves forward.',
         advisor_actions: [
           'Record approvals and declines',
           'Track customer communication outcomes',
           'Use approval results to determine next workflow step'
         ],
-        customer_impact:
-          'Customers experience a clearer decision process and better documentation of their choices.',
+        customer_impact: 'Customers experience a clearer decision process and better documentation of their choices.',
         workflow_stage: 'Decision capture',
-        technical_notes:
-          'Technical teams should inspect approval state, decline/approve semantics, and how decision artifacts are attached to recommendation structures.',
-        data_model_notes:
-          'Common model elements include approval outcomes, timestamps, decision notes, and references to recommendation or finding entities.',
-        integration_notes:
-          'Approval outcomes are often consumed by execution, customer-history, and reporting flows.',
-        prompt:
-          'Explain how customer approval works in the multi-point-inspection API'
+        technical_notes: 'Technical teams should inspect approval state, decline/approve semantics, and how decision artifacts are attached to recommendation structures.',
+        data_model_notes: 'Common model elements include approval outcomes, timestamps, decision notes, and references to recommendation or finding entities.',
+        integration_notes: 'Approval outcomes are often consumed by execution, customer-history, and reporting flows.',
+        prompt: 'Explain how customer approval works in the multi-point-inspection API'
       },
       {
         title: 'Close and publish results',
         description: 'Finalize the inspection and share outcomes with internal teams or the customer.',
-        business_guidance:
-          'This capability completes the inspection lifecycle and ensures that finalized outcomes are available for follow-through and communication.',
+        business_guidance: 'This capability completes the inspection lifecycle and ensures that finalized outcomes are available for follow-through and communication.',
         advisor_actions: [
           'Finalize inspection outcomes',
           'Publish or share results where needed',
           'Close the loop between inspection, approval, and execution'
         ],
-        customer_impact:
-          'Customers receive a clearer completed inspection story and documented results.',
+        customer_impact: 'Customers receive a clearer completed inspection story and documented results.',
         workflow_stage: 'Inspection completion',
-        technical_notes:
-          'Technical consumers should inspect completion state, publication or output semantics, and how finalized inspection data is represented.',
-        data_model_notes:
-          'This layer typically includes closed-state indicators, final result artifacts, and references to downstream usage or publication.',
-        integration_notes:
-          'Completion often feeds archival, reporting, customer-history, and execution-oriented systems.',
-        prompt:
-          'Explain how to close and publish results in the multi-point-inspection API'
+        technical_notes: 'Technical consumers should inspect completion state, publication or output semantics, and how finalized inspection data is represented.',
+        data_model_notes: 'This layer typically includes closed-state indicators, final result artifacts, and references to downstream usage or publication.',
+        integration_notes: 'Completion often feeds archival, reporting, customer-history, and execution-oriented systems.',
+        prompt: 'Explain how to close and publish results in the multi-point-inspection API'
       }
     ],
 
     workflow_map: [
-      {
-        step: 'Start inspection',
-        detail: 'Launch MPI workflow tied to intake or RO context',
-        prompt:
-          'Explain how to start the inspection workflow in the multi-point-inspection API'
-      },
-      {
-        step: 'Capture findings',
-        detail: 'Technician records results, notes, and media',
-        prompt:
-          'Explain how findings are captured in the multi-point-inspection API'
-      },
-      {
-        step: 'Build recommendations',
-        detail: 'Advisor prepares customer-facing repair guidance',
-        prompt:
-          'Explain how recommendations are built in the multi-point-inspection API'
-      },
-      {
-        step: 'Get approval',
-        detail: 'Customer decisions are captured and tracked',
-        prompt:
-          'Explain customer approval flow in the multi-point-inspection API'
-      },
-      {
-        step: 'Move to execution',
-        detail: 'Approved work moves into repair-order workflow',
-        prompt:
-          'Explain how approved work moves into execution from the multi-point-inspection API'
-      }
+      { step: 'Start inspection', detail: 'Launch MPI workflow tied to intake or RO context', prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API' },
+      { step: 'Capture findings', detail: 'Technician records results, notes, and media', prompt: 'Explain how findings are captured in the multi-point-inspection API' },
+      { step: 'Build recommendations', detail: 'Advisor prepares customer-facing repair guidance', prompt: 'Explain how recommendations are built in the multi-point-inspection API' },
+      { step: 'Get approval', detail: 'Customer decisions are captured and tracked', prompt: 'Explain customer approval flow in the multi-point-inspection API' },
+      { step: 'Move to execution', detail: 'Approved work moves into repair-order workflow', prompt: 'Explain how approved work moves into execution from the multi-point-inspection API' }
     ],
 
     schema_cards: [
-      {
-        title: 'Inspection',
-        description: 'Core inspection entity representing the inspection lifecycle.',
-        prompt: 'Show schema Inspection in the multi-point-inspection API'
-      },
-      {
-        title: 'Finding',
-        description: 'Represents an inspection finding, condition, or observed result.',
-        prompt: 'Show schema Finding in the multi-point-inspection API'
-      },
-      {
-        title: 'Recommendation',
-        description: 'Represents advisor-ready or technician-derived recommended work.',
-        prompt: 'Show schema Recommendation in the multi-point-inspection API'
-      },
-      {
-        title: 'Approval',
-        description: 'Captures customer approval or decline decisions.',
-        prompt: 'Show schema Approval in the multi-point-inspection API'
-      },
-      {
-        title: 'InspectionMedia',
-        description: 'Represents photos, videos, or other evidence attached to findings.',
-        prompt: 'Show schema InspectionMedia in the multi-point-inspection API'
-      },
-      {
-        title: 'InspectionStatus',
-        description: 'Represents workflow or lifecycle state of an inspection.',
-        prompt: 'Show schema InspectionStatus in the multi-point-inspection API'
-      }
+      { title: 'Inspection', description: 'Core inspection entity representing the inspection lifecycle.', prompt: 'Show schema Inspection in the multi-point-inspection API' },
+      { title: 'Finding', description: 'Represents an inspection finding, condition, or observed result.', prompt: 'Show schema Finding in the multi-point-inspection API' },
+      { title: 'Recommendation', description: 'Represents advisor-ready or technician-derived recommended work.', prompt: 'Show schema Recommendation in the multi-point-inspection API' },
+      { title: 'Approval', description: 'Captures customer approval or decline decisions.', prompt: 'Show schema Approval in the multi-point-inspection API' },
+      { title: 'InspectionMedia', description: 'Represents photos, videos, or other evidence attached to findings.', prompt: 'Show schema InspectionMedia in the multi-point-inspection API' },
+      { title: 'InspectionStatus', description: 'Represents workflow or lifecycle state of an inspection.', prompt: 'Show schema InspectionStatus in the multi-point-inspection API' },
+      { title: 'InspectionManifest', description: 'Defines inspection structure or checklist context.', prompt: 'Show schema InspectionManifest in the multi-point-inspection API' },
+      { title: 'InspectionLine', description: 'Represents an inspection line or checklist entry.', prompt: 'Show schema InspectionLine in the multi-point-inspection API' },
+      { title: 'ConditionCode', description: 'Represents condition classification or result coding.', prompt: 'Show schema ConditionCode in the multi-point-inspection API' },
+      { title: 'MediaReference', description: 'Represents media linkage for inspection evidence.', prompt: 'Show schema MediaReference in the multi-point-inspection API' },
+      { title: 'ApprovalDecision', description: 'Represents normalized approval decision values.', prompt: 'Show schema ApprovalDecision in the multi-point-inspection API' },
+      { title: 'RecommendationStatus', description: 'Represents recommendation lifecycle or state.', prompt: 'Show schema RecommendationStatus in the multi-point-inspection API' }
     ],
 
     endpoint_cards: [
-      {
-        title: 'GET /inspections',
-        description: 'List or search inspections.',
-        prompt: 'Explain GET /inspections for the multi-point-inspection API'
-      },
-      {
-        title: 'POST /inspections',
-        description: 'Create or start an inspection.',
-        prompt: 'Explain POST /inspections for the multi-point-inspection API'
-      },
-      {
-        title: 'GET /inspections/{id}',
-        description: 'Retrieve a specific inspection.',
-        prompt: 'Explain GET /inspections/{id} for the multi-point-inspection API'
-      },
-      {
-        title: 'GET /inspections/{id}/findings',
-        description: 'Retrieve findings tied to an inspection.',
-        prompt: 'Explain GET /inspections/{id}/findings for the multi-point-inspection API'
-      },
-      {
-        title: 'POST /inspections/{id}/recommendations',
-        description: 'Create or record recommendations for an inspection.',
-        prompt: 'Explain POST /inspections/{id}/recommendations for the multi-point-inspection API'
-      },
-      {
-        title: 'POST /inspections/{id}/approvals',
-        description: 'Capture approval or decline outcomes.',
-        prompt: 'Explain POST /inspections/{id}/approvals for the multi-point-inspection API'
-      }
+      { title: 'GET /inspections', description: 'List or search inspections.', prompt: 'Explain GET /inspections for the multi-point-inspection API' },
+      { title: 'POST /inspections', description: 'Create or start an inspection.', prompt: 'Explain POST /inspections for the multi-point-inspection API' },
+      { title: 'GET /inspections/{id}', description: 'Retrieve a specific inspection.', prompt: 'Explain GET /inspections/{id} for the multi-point-inspection API' },
+      { title: 'GET /inspections/{id}/findings', description: 'Retrieve findings tied to an inspection.', prompt: 'Explain GET /inspections/{id}/findings for the multi-point-inspection API' },
+      { title: 'POST /inspections/{id}/recommendations', description: 'Create or record recommendations for an inspection.', prompt: 'Explain POST /inspections/{id}/recommendations for the multi-point-inspection API' },
+      { title: 'POST /inspections/{id}/approvals', description: 'Capture approval or decline outcomes.', prompt: 'Explain POST /inspections/{id}/approvals for the multi-point-inspection API' }
     ],
 
     schema_details: {
@@ -933,28 +759,6 @@ This schema often includes approval state, decision timestamps, notes, and refer
 
 3. Why it matters
 Approval is where business intent becomes an execution decision.`
-      },
-      InspectionMedia: {
-        title: 'InspectionMedia',
-        body: `1. Direct answer
-InspectionMedia represents photos, videos, or supporting evidence attached to inspection results.
-
-2. Key schema details
-This schema usually contains media metadata, references to findings or inspections, and possibly URLs or storage-related attributes depending on implementation.
-
-3. Why it matters
-Media provides supporting evidence for technician findings and advisor communication.`
-      },
-      InspectionStatus: {
-        title: 'InspectionStatus',
-        body: `1. Direct answer
-InspectionStatus represents workflow or lifecycle state for the inspection process.
-
-2. Key schema details
-This schema may be a standalone object or an enum-oriented structure that captures lifecycle progress such as started, in-progress, completed, or published.
-
-3. Why it matters
-Status drives workflow visibility, operational coordination, and downstream handling.`
       }
     },
 
@@ -1019,6 +823,57 @@ Status drives workflow visibility, operational coordination, and downstream hand
         type: 'string',
         enum: ['started', 'in_progress', 'completed', 'published']
       }
+    },
+
+    endpoint_details: {
+      'GET /INSPECTIONS': `1. Direct answer
+GET /inspections lists or searches inspection records.
+
+2. Key endpoint details
+This endpoint is useful for retrieving inspection collections, filtering workflow state, and supporting advisor or operational views of inspection activity.
+
+3. Why it matters
+It gives technical consumers a collection-level entry point into the MPI domain.`,
+      'POST /INSPECTIONS': `1. Direct answer
+POST /inspections creates or starts an inspection.
+
+2. Key endpoint details
+This endpoint is typically used to initialize an inspection record tied to a vehicle visit, intake event, or repair-order context.
+
+3. Why it matters
+It is a core lifecycle entry point for the MPI domain.`,
+      'GET /INSPECTIONS/{ID}': `1. Direct answer
+GET /inspections/{id} retrieves a specific inspection.
+
+2. Key endpoint details
+This endpoint is used to inspect the full state of a single inspection, including status, relationships, and downstream context.
+
+3. Why it matters
+It is the most direct technical path for reading a specific MPI entity.`,
+      'GET /INSPECTIONS/{ID}/FINDINGS': `1. Direct answer
+GET /inspections/{id}/findings retrieves findings for a specific inspection.
+
+2. Key endpoint details
+This endpoint exposes the technician-observed results and inspection evidence attached to that inspection.
+
+3. Why it matters
+It is central to finding review, recommendation generation, and customer communication.`,
+      'POST /INSPECTIONS/{ID}/RECOMMENDATIONS': `1. Direct answer
+POST /inspections/{id}/recommendations creates or records recommendations for an inspection.
+
+2. Key endpoint details
+This endpoint turns findings into proposed next actions or service guidance.
+
+3. Why it matters
+It connects technical inspection results to business-ready repair proposals.`,
+      'POST /INSPECTIONS/{ID}/APPROVALS': `1. Direct answer
+POST /inspections/{id}/approvals records customer approval or decline outcomes.
+
+2. Key endpoint details
+This endpoint captures decision state for recommendations or proposed work.
+
+3. Why it matters
+It is the bridge from recommendation into execution decision.`
     }
   }
 };
@@ -1057,6 +912,10 @@ function getBuiltInRawSchema(domain, schemaName) {
   return DOMAIN_CONFIG[domain]?.raw_schemas?.[normalized] || null;
 }
 
+function getBuiltInEndpointDetail(domain, endpointTitle) {
+  return DOMAIN_CONFIG[domain]?.endpoint_details?.[normalizeEndpointTitle(endpointTitle)] || null;
+}
+
 /* --------------------------------------------------
  * SAFE MCP ENRICHMENT
  * -------------------------------------------------- */
@@ -1086,7 +945,7 @@ async function safeGetOverview(domain) {
 }
 
 function deriveEndpointCards(result, domain) {
-  return extractOperations(result).slice(0, 6).map((op) => ({
+  return extractOperations(result).slice(0, 8).map((op) => ({
     title: `${op.method || 'GET'} ${op.path || ''}`.trim(),
     description: op.summary || op.description || 'API endpoint',
     prompt: `Explain ${(op.method || 'GET')} ${op.path || ''} for the ${domain || 'current'} API`
@@ -1094,7 +953,7 @@ function deriveEndpointCards(result, domain) {
 }
 
 function deriveSchemaCards(result, domain) {
-  return extractSchemas(result).slice(0, 6).map((s) => ({
+  return extractSchemas(result).slice(0, 16).map((s) => ({
     title: s.name,
     description: s.description || 'View schema details',
     prompt: `Show schema ${s.name} in the ${domain || 'current'} API`
@@ -1110,20 +969,15 @@ async function buildCapabilityResponse(domain, audience) {
   const workflowMap = getBuiltInWorkflowMap(domain);
 
   const [ops, schemas] = await Promise.all([
-    safeListOperations(domain, 5),
-    safeListSchemas(domain, 5)
+    safeListOperations(domain, 6),
+    safeListSchemas(domain, 12)
   ]);
 
   const liveEndpointCards = deriveEndpointCards(ops, domain);
   const liveSchemaCards = deriveSchemaCards(schemas, domain);
 
-  const endpointCards = liveEndpointCards.length
-    ? liveEndpointCards
-    : getBuiltInEndpointCards(domain);
-
-  const schemaCards = liveSchemaCards.length
-    ? liveSchemaCards
-    : getBuiltInSchemaCards(domain);
+  const endpointCards = liveEndpointCards.length ? liveEndpointCards : getBuiltInEndpointCards(domain);
+  const schemaCards = liveSchemaCards.length ? liveSchemaCards : getBuiltInSchemaCards(domain);
 
   let intro;
   if (audience === 'technical') {
@@ -1170,7 +1024,7 @@ async function buildOverviewResponse(domain, message, audience) {
   const [overview, ops, schemas] = await Promise.all([
     safeGetOverview(domain),
     safeListOperations(domain, 8),
-    safeListSchemas(domain, 8)
+    safeListSchemas(domain, 16)
   ]);
 
   const builtInOverview = getAudienceOverview(domain, audience);
@@ -1226,7 +1080,7 @@ Write a rich structured answer that preserves the depth of the built-in domain o
 }
 
 async function buildSchemaResponse(domain, message, audience) {
-  const schemas = await safeListSchemas(domain, 8);
+  const schemas = await safeListSchemas(domain, 16);
   const liveSchemaCards = deriveSchemaCards(schemas, domain);
   const schemaCards = liveSchemaCards.length ? liveSchemaCards : getBuiltInSchemaCards(domain);
 
@@ -1353,7 +1207,7 @@ Inspect related schema cards or ask for endpoints tied to this schema.`;
 }
 
 async function buildEndpointResponse(domain, message, audience) {
-  const ops = await safeListOperations(domain, 5);
+  const ops = await safeListOperations(domain, 6);
   const liveEndpointCards = deriveEndpointCards(ops, domain);
   const endpointCards = liveEndpointCards.length ? liveEndpointCards : getBuiltInEndpointCards(domain);
 
@@ -1397,9 +1251,33 @@ Inspect the endpoint cards, switch to Technical mode for implementation-oriented
     sections: extractSections(answer),
     capability_cards: getBuiltInCapabilityCards(domain),
     endpoint_cards: endpointCards,
-    schema_cards: [],
+    schema_cards: getBuiltInSchemaCards(domain),
     workflow_map: getBuiltInWorkflowMap(domain),
     progressive: liveEndpointCards.length === 0
+  };
+}
+
+async function buildEndpointDetailResponse(domain, endpointTitle, audience) {
+  const builtIn = getBuiltInEndpointDetail(domain, endpointTitle);
+
+  const answer = builtIn || `1. Direct answer
+${endpointTitle} is an endpoint in the ${domain} API.
+
+2. Key endpoint details
+Detailed live endpoint content is not available right now.
+
+3. Useful next steps
+Inspect related schemas or try again later.`;
+
+  return {
+    answer,
+    sections: extractSections(answer),
+    audience,
+    capability_cards: getBuiltInCapabilityCards(domain),
+    endpoint_cards: getBuiltInEndpointCards(domain),
+    schema_cards: getBuiltInSchemaCards(domain),
+    workflow_map: getBuiltInWorkflowMap(domain),
+    progressive: true
   };
 }
 
@@ -1446,6 +1324,7 @@ app.post('/api/chat', async (req, res) => {
 
     const domain = detectDomain(message);
     const requestedSchemaName = extractRequestedSchemaName(message);
+    const requestedEndpoint = extractRequestedEndpoint(message);
 
     if (domain && requestedSchemaName) {
       const result = await buildSchemaDetailResponse(domain, requestedSchemaName, audience);
@@ -1461,6 +1340,19 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
+    if (domain && requestedEndpoint) {
+      const result = await buildEndpointDetailResponse(domain, requestedEndpoint, audience);
+      return res.json({
+        ...result,
+        tool_name: 'endpoint_detail_pipeline',
+        tool_arguments: { domain_name: domain, endpoint: requestedEndpoint, audience },
+        explore_next: [
+          `Show me the schemas of the ${domain} API`,
+          `Show me the business capabilities of the ${domain} API`
+        ]
+      });
+    }
+
     if (domain && wantsCapabilities(message)) {
       const result = await buildCapabilityResponse(domain, audience);
       return res.json({
@@ -1471,7 +1363,8 @@ app.post('/api/chat', async (req, res) => {
         explore_next: [
           `List operations for the ${domain} API`,
           `List schemas for the ${domain} API`,
-          `Show example endpoints for the ${domain} API`
+          `Show example endpoints for the ${domain} API`,
+          `Show more schemas for the ${domain} API`
         ]
       });
     }
@@ -1486,7 +1379,8 @@ app.post('/api/chat', async (req, res) => {
         explore_next: [
           `Show me the business capabilities of the ${domain} API`,
           `List schemas for the ${domain} API`,
-          `Show example endpoints for the ${domain} API`
+          `Show example endpoints for the ${domain} API`,
+          `Show more schemas for the ${domain} API`
         ]
       });
     }
@@ -1499,6 +1393,7 @@ app.post('/api/chat', async (req, res) => {
         tool_name: 'schema_pipeline',
         tool_arguments: { domain_name: domain, audience },
         explore_next: [
+          `Show more schemas for the ${domain} API`,
           `Show me the business capabilities of the ${domain} API`,
           `Show example endpoints for the ${domain} API`
         ]
@@ -1513,8 +1408,8 @@ app.post('/api/chat', async (req, res) => {
         tool_name: 'endpoint_pipeline',
         tool_arguments: { domain_name: domain, audience },
         explore_next: [
-          `Show me the business capabilities of the ${domain} API`,
-          `List schemas for the ${domain} API`
+          `Show me the schemas of the ${domain} API`,
+          `Show me the business capabilities of the ${domain} API`
         ]
       });
     }

@@ -1,893 +1,647 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>STAR Automotive API Intelligence</title>
+  <meta charset="utf-8" />
+  <title>STAR API Intelligence Portal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{
-      --bg:#08111f;
-      --bg-2:#0b1528;
-      --panel:#0f1b33cc;
-      --line:#243a66;
-      --line-soft:#1b2c4d;
-      --text:#eef4ff;
-      --muted:#9fb0cf;
-      --muted-2:#7f92b4;
-      --accent:#7fb4ff;
-      --accent2:#76e1c3;
-      --shadow:0 24px 70px rgba(0,0,0,.35);
+    :root {
+      --bg: #0b1020;
+      --panel: #121935;
+      --panel-2: #182246;
+      --text: #edf2ff;
+      --muted: #a8b3d1;
+      --line: #2b3769;
+      --brand: #7aa2ff;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      --radius: 18px;
     }
 
-    *{box-sizing:border-box}
-
-    body{
-      margin:0;
-      color:var(--text);
-      font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:
-        radial-gradient(1100px 520px at 0% 0%, rgba(99,156,255,.16), transparent 55%),
-        radial-gradient(900px 420px at 100% 0%, rgba(93,231,194,.12), transparent 52%),
-        linear-gradient(180deg,var(--bg),var(--bg-2));
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #09101f 0%, #0c1327 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
 
-    .shell{max-width:1580px;margin:0 auto;min-height:100vh;padding:22px}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
-    .brand{display:flex;align-items:center;gap:14px}
-    .brand-mark{
-      width:42px;height:42px;border-radius:14px;
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
-      display:grid;place-items:center;color:#07111f;font-weight:900;
-      box-shadow:0 12px 28px rgba(111,167,255,.28)
-    }
-    .brand-copy h1{margin:0;font-size:22px;letter-spacing:-.03em;line-height:1.05}
-    .brand-copy p{margin:4px 0 0;color:var(--muted);font-size:13px}
-    .top-actions{display:flex;gap:10px;flex-wrap:wrap}
-    .pill{
-      border:1px solid var(--line);
-      background:rgba(12,21,40,.82);
-      color:var(--muted);
-      border-radius:999px;
-      padding:7px 11px;
-      font-size:12px;
-      font-weight:700
+    button, input, textarea, select { font: inherit; }
+
+    .app {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      min-height: 100vh;
     }
 
-    .layout{
-      display:grid;
-      grid-template-columns:280px minmax(0,1fr) 380px;
-      gap:18px;
-      align-items:start
+    .sidebar, .main {
+      background: rgba(18, 25, 53, 0.88);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
     }
 
-    .panel{
-      background:var(--panel);
-      backdrop-filter:blur(10px);
-      border:1px solid var(--line);
-      border-radius:18px;
-      box-shadow:var(--shadow)
+    .sidebar {
+      padding: 20px;
+      position: sticky;
+      top: 24px;
+      height: fit-content;
     }
 
-    .sidebar-section,.right-group{
-      padding:16px;
-      border-bottom:1px solid var(--line-soft)
+    .main {
+      padding: 20px;
     }
 
-    .sidebar-section:last-child,.right-group:last-child{border-bottom:none}
-
-    .eyebrow{
-      margin:0 0 10px;
-      color:var(--muted);
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-      font-weight:800
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
     }
 
-    .nav-card,.play-card,.action-card,.schema-card,.endpoint-card,.capability-card,.workflow-card,.audience-btn,.ghost-mini{
-      width:100%;
-      text-align:left;
-      color:var(--text);
-      background:linear-gradient(180deg, rgba(20,33,60,.98), rgba(9,16,30,.98));
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:12px 13px;
-      cursor:pointer;
-      transition:.16s ease;
-      margin-bottom:10px
+    .brand-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--brand), #5f7cff);
+      display: grid;
+      place-items: center;
+      color: #081120;
+      font-weight: 800;
     }
 
-    .nav-card:hover,.play-card:hover,.action-card:hover,.schema-card:hover,.endpoint-card:hover,.capability-card:hover,.workflow-card:hover,.btn:hover,.ghost:hover,.tab:hover,.audience-btn:hover,.ghost-mini:hover{
-      transform:translateY(-1px);
-      border-color:#5b84d9;
-      background:linear-gradient(180deg, rgba(24,39,70,.98), rgba(12,20,37,.98))
+    .brand h1 {
+      font-size: 18px;
+      margin: 0;
     }
 
-    .audience-row{display:flex;gap:8px;flex-wrap:wrap}
-    .audience-btn{width:auto;margin-bottom:0;padding:10px 12px;font-weight:700}
-    .audience-btn.active{border-color:#7fb4ff;box-shadow:0 0 0 1px rgba(127,180,255,.35) inset}
-
-    .nav-title,.schema-title,.endpoint-title,.capability-title,.workflow-title{
-      font-weight:800;letter-spacing:-.01em
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 13px;
     }
 
-    .nav-meta,.schema-meta,.endpoint-meta,.capability-meta,.workflow-meta{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.45;
-      margin-top:4px
+    .label {
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 14px 0 8px;
     }
 
-    .hero{
-      margin-bottom:16px;
-      padding:20px;
-      background:
-        radial-gradient(700px 240px at 0% 0%, rgba(120,170,255,.16), transparent 55%),
-        linear-gradient(180deg, rgba(18,30,57,.95), rgba(12,21,41,.95));
-      border:1px solid var(--line);
-      border-radius:22px;
-      box-shadow:var(--shadow)
+    .audience-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
     }
 
-    .hero h2{margin:0;font-size:28px;line-height:1.05;letter-spacing:-.04em}
-    .hero p{margin:10px 0 0;color:var(--muted);max-width:920px;font-size:15px}
-    .hero-tags{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-    .hero-tag{
-      border:1px solid var(--line);
-      background:rgba(10,18,34,.75);
-      color:#dce8ff;
-      border-radius:999px;
-      padding:7px 10px;
-      font-size:12px;
-      font-weight:700
+    .audience-btn {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 8px;
+      border-radius: 12px;
+      cursor: pointer;
     }
 
-    .composer{padding:16px;margin-bottom:16px}
-
-    textarea{
-      width:100%;
-      min-height:116px;
-      resize:vertical;
-      border-radius:14px;
-      border:1px solid var(--line);
-      background:#08111f;
-      color:var(--text);
-      padding:14px;
-      font:inherit;
-      outline:none
+    .audience-btn.active {
+      background: linear-gradient(135deg, rgba(122, 162, 255, 0.24), rgba(151, 181, 255, 0.16));
+      border-color: var(--brand);
     }
 
-    textarea:focus{border-color:#6e9cff;box-shadow:0 0 0 3px rgba(110,156,255,.14)}
-
-    .toolbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-top:12px
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      background: #0d1430;
+      color: var(--text);
+      border-radius: 16px;
+      padding: 14px;
+      line-height: 1.45;
     }
 
-    .toolbar-left,.toolbar-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-
-    .btn,.ghost,.tab{
-      border:none;
-      border-radius:12px;
-      padding:10px 14px;
-      cursor:pointer;
-      font-weight:800;
-      letter-spacing:-.01em
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
     }
 
-    .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#07111f}
-    .ghost,.tab,.ghost-mini{background:#182746;color:#e5efff;border:1px solid var(--line)}
-    .ghost-mini{width:auto;padding:9px 12px;font-weight:700;margin-bottom:0}
-
-    .status{color:var(--muted);font-size:13px;min-height:1.2em}
-    .thinking{display:none;align-items:center;gap:8px;color:var(--muted);font-size:13px}
-    .thinking.active{display:flex}
-
-    .dots{display:inline-flex;gap:5px}
-    .dots span{
-      width:7px;height:7px;border-radius:50%;
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
-      animation:bounce 1.2s infinite ease-in-out
-    }
-    .dots span:nth-child(2){animation-delay:.15s}
-    .dots span:nth-child(3){animation-delay:.3s}
-
-    @keyframes bounce{
-      0%,80%,100%{transform:translateY(0);opacity:.45}
-      40%{transform:translateY(-4px);opacity:1}
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 11px 14px;
+      border-radius: 14px;
+      cursor: pointer;
     }
 
-    .response-hd{
-      padding:14px 18px;
-      border-bottom:1px solid var(--line-soft);
-      background:rgba(16,28,52,.88);
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      flex-wrap:wrap
+    .btn.primary {
+      background: linear-gradient(135deg, var(--brand), #5f7cff);
+      color: #071120;
+      border-color: transparent;
+      font-weight: 700;
     }
 
-    .response-title{font-size:15px;font-weight:800}
-    .response-tabs{display:flex;gap:8px;flex-wrap:wrap}
-    .tab.active{background:#223866;border-color:#4c72c0}
-    .response-bd{padding:18px}
-
-    .sections-view,.raw-view{display:none}
-    .sections-view.active,.raw-view.active{display:block}
-
-    .section-card{
-      background:linear-gradient(180deg, rgba(19,33,61,.96), rgba(11,20,37,.96));
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:16px;
-      margin-bottom:14px
+    .quick-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
     }
 
-    .section-title{margin:0 0 10px;color:#dbeafe;font-size:18px;font-weight:800}
-    .section-body{white-space:pre-wrap;line-height:1.75;color:var(--text)}
-
-    .raw-view{
-      white-space:pre-wrap;
-      line-height:1.75;
-      color:var(--text);
-      background:#09111f;
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:16px
+    .quick-item {
+      border: 1px solid var(--line);
+      background: #0d1430;
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: var(--muted);
+      cursor: pointer;
     }
 
-    .meta-grid{
-      margin-top:16px;
-      display:grid;
-      grid-template-columns:100px 1fr;
-      gap:8px 12px;
-      color:var(--muted);
-      font-size:13px
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 16px;
+      margin-bottom: 18px;
     }
 
-    .code{
-      display:inline-block;
-      max-width:100%;
-      overflow-wrap:anywhere;
-      padding:7px 9px;
-      border-radius:10px;
-      background:#08111f;
-      border:1px solid var(--line);
-      color:#dbeafe;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-      font-size:12px
+    .title h2 {
+      margin: 0;
+      font-size: 24px;
     }
 
-    .inspector-empty{color:var(--muted-2);font-size:13px;padding:8px 2px}
-    .inspector-header{padding:16px;border-bottom:1px solid var(--line-soft)}
-    .inspector-title{font-size:18px;font-weight:800;letter-spacing:-.02em}
-    .inspector-sub{color:var(--muted);font-size:13px;margin-top:4px}
-    .progress-note{margin-top:8px;color:#a4c5ff;font-size:12px}
-    .inspector-body{padding:16px}
-
-    #capabilityCards{display:flex;flex-wrap:wrap;gap:10px}
-    #capabilityCards .capability-card{width:calc(50% - 5px);margin-bottom:0}
-
-    .modal{
-      position:fixed;
-      inset:0;
-      background:rgba(2,6,23,.78);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      z-index:999
+    .title p {
+      margin: 6px 0 0;
+      color: var(--muted);
     }
 
-    .modal.active{display:flex}
-
-    .modal-card{
-      width:min(1160px,100%);
-      max-height:88vh;
-      overflow:auto;
-      background:#0b1220;
-      border:1px solid var(--line);
-      border-radius:18px;
-      box-shadow:var(--shadow);
-      padding:18px
+    .meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    .modal-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      margin-bottom:14px
+    .pill {
+      border: 1px solid var(--line);
+      background: #0d1430;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
     }
 
-    .modal-title{font-size:20px;font-weight:800}
-    .close-btn{border:none;background:#1e2f54;color:#fff;border-radius:10px;padding:9px 12px;cursor:pointer}
-
-    .cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-
-    .schema-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-    .schema-tab{
-      border:none;
-      border-radius:12px;
-      padding:10px 14px;
-      cursor:pointer;
-      font-weight:800;
-      letter-spacing:-.01em;
-      background:#182746;
-      color:#e5efff;
-      border:1px solid var(--line)
-    }
-    .schema-tab.active{background:#223866;border-color:#4c72c0}
-
-    .schema-pane{display:none}
-    .schema-pane.active{display:block}
-
-    .schema-raw{
-      background:#09111f;
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:16px;
-      white-space:pre-wrap;
-      overflow:auto;
-      color:#dbeafe;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-      font-size:12px;
-      line-height:1.6
+    .status {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #0d1430;
+      color: var(--muted);
+      display: none;
     }
 
-    ul{margin:8px 0 0 18px;padding:0}
-    li{margin-bottom:6px}
+    .status.show { display: block; }
+    .status.error { color: #ffd2d2; }
+    .status.ok { color: #d8ffe8; }
 
-    @media (max-width:1320px){
-      .layout{grid-template-columns:1fr}
+    .section-title {
+      margin: 18px 0 10px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
     }
 
-    @media (max-width:720px){
-      #capabilityCards .capability-card{width:100%}
-      .cap-grid{grid-template-columns:1fr}
+    .card {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(24, 34, 70, 0.95), rgba(13, 20, 48, 0.95));
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .card h3, .card h4 { margin: 0 0 8px; }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .card.clickable { cursor: pointer; }
+
+    .answer {
+      white-space: pre-wrap;
+      line-height: 1.6;
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #0d1430;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 640px;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      color: #d7e2ff;
+      background: rgba(255,255,255,0.02);
+      font-size: 13px;
+    }
+
+    td {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #081023;
+      color: #dfe7ff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      line-height: 1.45;
+      overflow: auto;
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .grid.two, .grid.three { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <div class="topbar">
+  <div class="app">
+    <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">★</div>
-        <div class="brand-copy">
-          <h1>STAR Automotive API Intelligence</h1>
-          <p>Audience-aware domain intelligence for business, technical, and architecture users.</p>
-        </div>
-      </div>
-      <div class="top-actions">
-        <div class="pill">Audience Aware</div>
-        <div class="pill">Business + Technical + Architecture</div>
-        <div class="pill">OpenAPI Schema View</div>
-      </div>
-    </div>
-
-    <div class="layout">
-      <aside class="panel">
-        <div class="sidebar-section">
-          <div class="eyebrow">Audience</div>
-          <div class="audience-row">
-            <button class="audience-btn active" data-audience="business" onclick="setAudience('business')">Business</button>
-            <button class="audience-btn" data-audience="technical" onclick="setAudience('technical')">Technical</button>
-            <button class="audience-btn" data-audience="architecture" onclick="setAudience('architecture')">Architecture</button>
-          </div>
-        </div>
-
-        <div class="sidebar-section">
-          <div class="eyebrow">API Explorer</div>
-          <button class="nav-card" onclick="ask('Give me an overview of the Appointment API')">
-            <div class="nav-title">Appointment API</div>
-            <div class="nav-meta">Dealer vehicle service scheduling and service-lane workflow.</div>
-          </button>
-          <button class="nav-card" onclick="ask('Give me an overview of the Multi-Point Inspection API')">
-            <div class="nav-title">Multi-Point Inspection API</div>
-            <div class="nav-meta">Vehicle inspection workflow, findings, labor, and advisor-facing actions.</div>
-          </button>
-          <button class="nav-card" onclick="ask('Show me the business capabilities of the Multi-Point Inspection API')">
-            <div class="nav-title">MPI Business Capabilities</div>
-            <div class="nav-meta">Launch rich capability guidance using the selected audience mode.</div>
-          </button>
-        </div>
-
-        <div class="sidebar-section">
-          <div class="eyebrow">Executive Demo Mode</div>
-          <div id="executivePrompts"></div>
-        </div>
-      </aside>
-
-      <main>
-        <section class="hero panel">
-          <h2>One domain, multiple lenses</h2>
-          <p>Use Business mode for workflow and customer impact, Technical mode for schemas and implementation concerns, and Architecture mode for boundaries and integration design.</p>
-          <div class="hero-tags">
-            <div class="hero-tag">Business</div>
-            <div class="hero-tag">Technical</div>
-            <div class="hero-tag">Architecture</div>
-            <div class="hero-tag">OpenAPI JSON</div>
-          </div>
-        </section>
-
-        <section class="panel composer">
-          <textarea id="prompt" placeholder="Ask about an API, schema, endpoint, business capability, workflow, or architecture boundary..."></textarea>
-          <div class="toolbar">
-            <div class="toolbar-left">
-              <button class="btn" id="sendBtn" onclick="send()">Ask AI</button>
-              <button class="ghost" onclick="clearAll()">Clear</button>
-              <button class="ghost" onclick="copyAnswer()">Copy Answer</button>
-            </div>
-            <div class="toolbar-right">
-              <div class="thinking" id="thinking">
-                <div class="dots"><span></span><span></span><span></span></div>
-                <div>Working through STAR API intelligence…</div>
-              </div>
-              <div class="status" id="status"></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <div class="response-hd">
-            <div class="response-title">Response</div>
-            <div class="response-tabs">
-              <button class="tab active" id="sectionsTab" onclick="showView('sections')">Structured View</button>
-              <button class="tab" id="rawTab" onclick="showView('raw')">Raw Text</button>
-            </div>
-          </div>
-          <div class="response-bd">
-            <div id="sectionsView" class="sections-view active"></div>
-            <div id="rawView" class="raw-view">Your answer will appear here.</div>
-            <div class="meta-grid">
-              <div>Tool</div><div id="toolName">—</div>
-              <div>Arguments</div><div id="toolArgs"><span class="code">—</span></div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <aside class="panel">
-        <div class="inspector-header">
-          <div class="eyebrow">Live Inspector</div>
-          <div class="inspector-title" id="inspectorTitle">No selection yet</div>
-          <div class="inspector-sub" id="inspectorSub">Select a capability, schema, or endpoint to inspect rich details.</div>
-          <div class="progress-note" id="progressNote"></div>
-        </div>
-        <div class="inspector-body">
-          <div class="right-group">
-            <div class="eyebrow">Business Capabilities</div>
-            <div id="capabilityCards"><div class="inspector-empty">Capability cards will appear here.</div></div>
-          </div>
-          <div class="right-group">
-            <div class="eyebrow">Workflow Map</div>
-            <div id="workflowMap"><div class="inspector-empty">Workflow steps will appear here.</div></div>
-          </div>
-          <div class="right-group">
-            <div class="eyebrow">Explore Next</div>
-            <div id="exploreNext"><div class="inspector-empty">No follow-up actions yet.</div></div>
-          </div>
-          <div class="right-group">
-            <div class="eyebrow">Schemas</div>
-            <div id="schemaCards"><div class="inspector-empty">Schemas will appear here.</div></div>
-          </div>
-          <div class="right-group">
-            <div class="eyebrow">Endpoints</div>
-            <div id="endpointCards"><div class="inspector-empty">Endpoints will appear here.</div></div>
-          </div>
-        </div>
-      </aside>
-    </div>
-  </div>
-
-  <div id="capabilityModal" class="modal">
-    <div class="modal-card">
-      <div class="modal-top">
+        <div class="brand-badge">S</div>
         <div>
-          <div class="modal-title" id="capabilityModalTitle">Business Capability</div>
-          <div class="inspector-sub" id="capabilityModalSub">Audience-aware guidance</div>
+          <h1>STAR API Intelligence</h1>
+          <p>Business, technical, and architecture discovery</p>
         </div>
-        <button class="close-btn" onclick="closeCapabilityModal()">Close</button>
       </div>
-      <div id="capabilityModalBody"></div>
-    </div>
-  </div>
 
-  <div id="schemaModal" class="modal">
-    <div class="modal-card">
-      <div class="modal-top">
-        <div>
-          <div class="modal-title" id="schemaModalTitle">Schema Detail</div>
-          <div class="inspector-sub" id="schemaModalSub">Explanation and OpenAPI view</div>
+      <label class="label">Audience</label>
+      <div class="audience-grid">
+        <button class="audience-btn active" data-audience="business">Business</button>
+        <button class="audience-btn" data-audience="technical">Technical</button>
+        <button class="audience-btn" data-audience="architecture">Architecture</button>
+      </div>
+
+      <label class="label" for="prompt">Ask</label>
+      <textarea id="prompt" placeholder="Try:
+Explain GET /inspections/{id}/findings for the multi-point-inspection API"></textarea>
+
+      <div class="actions">
+        <button class="btn primary" id="askBtn">Ask</button>
+        <button class="btn" id="clearBtn">Clear</button>
+      </div>
+
+      <label class="label">Quick prompts</label>
+      <div class="quick-list">
+        <div class="quick-item">Give me a rich description of the Multi-Point Inspection API</div>
+        <div class="quick-item">Show me the schemas of the Multi-Point Inspection API</div>
+        <div class="quick-item">Explain GET /inspections/{id}/findings for the multi-point-inspection API</div>
+        <div class="quick-item">Show schema Inspection in the multi-point-inspection API</div>
+        <div class="quick-item">I need the GET /inspectios operation only for the sub-API</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="title">
+          <h2>Discovery Workspace</h2>
+          <p>OpenAPI + MCP + audience-aware API intelligence</p>
         </div>
-        <button class="close-btn" onclick="closeSchemaModal()">Close</button>
+        <div class="meta">
+          <div class="pill" id="audiencePill">Audience: business</div>
+          <div class="pill" id="toolPill">Tool: —</div>
+          <div class="pill" id="progressivePill">Progressive: false</div>
+        </div>
       </div>
 
-      <div class="schema-tabs">
-        <button class="schema-tab active" id="schemaExplainTab" onclick="showSchemaTab('explain')">Explanation</button>
-        <button class="schema-tab" id="schemaOpenApiTab" onclick="showSchemaTab('openapi')">OpenAPI</button>
+      <div id="status" class="status"></div>
+
+      <div class="section-title">Answer</div>
+      <div class="card">
+        <div id="answer" class="answer">Ask a question to explore the API.</div>
       </div>
 
-      <div id="schemaExplainPane" class="schema-pane active"></div>
-      <div id="schemaOpenApiPane" class="schema-pane"></div>
-    </div>
+      <div class="section-title">Structured sections</div>
+      <div id="sections" class="grid two"></div>
+
+      <div class="section-title">Endpoint parameters</div>
+      <div id="params"></div>
+
+      <div class="section-title">Request example</div>
+      <div id="requestExample"></div>
+
+      <div class="section-title">Response example</div>
+      <div id="responseExample"></div>
+
+      <div class="section-title">Related schemas</div>
+      <div id="relatedSchemas" class="grid three"></div>
+
+      <div class="section-title">Capabilities</div>
+      <div id="capabilities" class="grid three"></div>
+
+      <div class="section-title">Endpoints</div>
+      <div id="endpoints" class="grid three"></div>
+
+      <div class="section-title">Schemas</div>
+      <div id="schemas" class="grid three"></div>
+
+      <div class="section-title">Workflow</div>
+      <div id="workflow" class="grid two"></div>
+    </main>
   </div>
 
   <script>
-    let lastRawAnswer = '';
+    const promptEl = document.getElementById('prompt');
+    const askBtn = document.getElementById('askBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const statusEl = document.getElementById('status');
+    const answerEl = document.getElementById('answer');
+    const sectionsEl = document.getElementById('sections');
+    const paramsEl = document.getElementById('params');
+    const requestExampleEl = document.getElementById('requestExample');
+    const responseExampleEl = document.getElementById('responseExample');
+    const relatedSchemasEl = document.getElementById('relatedSchemas');
+    const capabilitiesEl = document.getElementById('capabilities');
+    const endpointsEl = document.getElementById('endpoints');
+    const schemasEl = document.getElementById('schemas');
+    const workflowEl = document.getElementById('workflow');
+    const audiencePill = document.getElementById('audiencePill');
+    const toolPill = document.getElementById('toolPill');
+    const progressivePill = document.getElementById('progressivePill');
+
     let currentAudience = 'business';
-    let currentRawSchema = null;
 
-    function setAudience(audience) {
-      currentAudience = audience;
-      document.querySelectorAll('.audience-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.audience === audience);
-      });
-      setStatus(`Audience set to ${audience}.`);
+    function setStatus(message = '', type = '') {
+      statusEl.textContent = message;
+      statusEl.className = 'status';
+      if (message) {
+        statusEl.classList.add('show');
+        if (type) statusEl.classList.add(type);
+      }
     }
 
-    function setStatus(text, isError = false) {
-      const el = document.getElementById('status');
-      el.textContent = text || '';
-      el.style.color = isError ? '#ff9e9e' : '#9fb0cf';
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
     }
 
-    function setLoading(loading) {
-      document.getElementById('sendBtn').disabled = loading;
-      document.getElementById('thinking').classList.toggle('active', loading);
+    function prettyJson(value) {
+      return JSON.stringify(value, null, 2);
     }
 
-    function setInspector(title, sub, note = '') {
-      document.getElementById('inspectorTitle').textContent = title || 'No selection yet';
-      document.getElementById('inspectorSub').textContent = sub || 'Select a capability, schema, or endpoint to inspect rich details.';
-      document.getElementById('progressNote').textContent = note || '';
+    function renderEmpty(target, text) {
+      target.innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
     }
 
-    function ask(text) {
-      document.getElementById('prompt').value = text;
-      send();
-    }
-
-    function clearAll() {
-      document.getElementById('prompt').value = '';
-      document.getElementById('sectionsView').innerHTML = '';
-      document.getElementById('rawView').textContent = 'Your answer will appear here.';
-      document.getElementById('capabilityCards').innerHTML = '<div class="inspector-empty">Capability cards will appear here.</div>';
-      document.getElementById('exploreNext').innerHTML = '<div class="inspector-empty">No follow-up actions yet.</div>';
-      document.getElementById('schemaCards').innerHTML = '<div class="inspector-empty">Schemas will appear here.</div>';
-      document.getElementById('endpointCards').innerHTML = '<div class="inspector-empty">Endpoints will appear here.</div>';
-      document.getElementById('workflowMap').innerHTML = '<div class="inspector-empty">Workflow steps will appear here.</div>';
-      document.getElementById('toolName').textContent = '—';
-      document.getElementById('toolArgs').innerHTML = '<span class="code">—</span>';
-      setInspector();
-      setStatus('');
-    }
-
-    function copyAnswer() {
-      navigator.clipboard.writeText(lastRawAnswer || '')
-        .then(() => setStatus('Answer copied.'))
-        .catch(() => setStatus('Copy failed.', true));
-    }
-
-    function showView(view) {
-      document.getElementById('sectionsView').classList.toggle('active', view === 'sections');
-      document.getElementById('rawView').classList.toggle('active', view === 'raw');
-      document.getElementById('sectionsTab').classList.toggle('active', view === 'sections');
-      document.getElementById('rawTab').classList.toggle('active', view === 'raw');
-    }
-
-    function escapeHtml(text) {
-      return String(text)
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#39;');
-    }
-
-    function formatSectionBody(text) {
-      return escapeHtml(text)
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>');
-    }
-
-    function renderSections(sections, rawAnswer) {
-      const container = document.getElementById('sectionsView');
-      container.innerHTML = '';
-
-      const data = Array.isArray(sections) && sections.length
-        ? sections
-        : [{ title: 'Overview', body: rawAnswer || '' }];
-
-      data.forEach((section) => {
-        const card = document.createElement('div');
-        card.className = 'section-card';
-        card.innerHTML =
-          '<div class="section-title">' + escapeHtml(section.title || 'Overview') + '</div>' +
-          '<div class="section-body">' + formatSectionBody(section.body || '') + '</div>';
-        container.appendChild(card);
-      });
-    }
-
-    function renderStringCards(containerId, items, className) {
-      const container = document.getElementById(containerId);
-      container.innerHTML = '';
-
+    function renderCards(target, items, onClick) {
       if (!items || !items.length) {
-        container.innerHTML = '<div class="inspector-empty">Nothing to show yet.</div>';
+        renderEmpty(target, 'Nothing to show yet.');
         return;
       }
 
-      items.forEach((item) => {
-        const btn = document.createElement('button');
-        btn.className = className;
-        btn.textContent = item;
-        btn.onclick = () => ask(item);
-        container.appendChild(btn);
-      });
+      target.innerHTML = items.map((item, idx) => `
+        <div class="card clickable" data-idx="${idx}">
+          <h4>${escapeHtml(item.title || item.step || 'Item')}</h4>
+          <p>${escapeHtml(item.description || item.detail || item.body || '')}</p>
+        </div>
+      `).join('');
+
+      if (onClick) {
+        [...target.querySelectorAll('.clickable')].forEach((el) => {
+          el.addEventListener('click', () => onClick(items[Number(el.dataset.idx)]));
+        });
+      }
     }
 
-    function renderObjectCards(containerId, items, className, onClick) {
-      const container = document.getElementById(containerId);
-      container.innerHTML = '';
-
-      if (!items || !items.length) {
-        container.innerHTML = '<div class="inspector-empty">Nothing to show yet.</div>';
+    function renderSections(sections) {
+      if (!sections || !sections.length) {
+        renderEmpty(sectionsEl, 'No structured sections.');
         return;
       }
 
-      items.forEach((item) => {
-        const btn = document.createElement('button');
-        btn.className = className;
-
-        const titleClass =
-          className === 'capability-card' ? 'capability-title' :
-          className === 'schema-card' ? 'schema-title' :
-          className === 'workflow-card' ? 'workflow-title' :
-          'endpoint-title';
-
-        const metaClass =
-          className === 'capability-card' ? 'capability-meta' :
-          className === 'schema-card' ? 'schema-meta' :
-          className === 'workflow-card' ? 'workflow-meta' :
-          'endpoint-meta';
-
-        btn.innerHTML =
-          '<div class="' + titleClass + '">' + escapeHtml(item.title || item.step || '') + '</div>' +
-          '<div class="' + metaClass + '">' + escapeHtml(item.description || item.detail || '') + '</div>';
-
-        btn.onclick = () => onClick(item);
-        container.appendChild(btn);
-      });
+      sectionsEl.innerHTML = sections.map((s) => `
+        <div class="card">
+          <h4>${escapeHtml(s.title || 'Section')}</h4>
+          <p>${escapeHtml(s.body || '')}</p>
+        </div>
+      `).join('');
     }
 
-    function renderWorkflowMap(items) {
-      renderObjectCards('workflowMap', items || [], 'workflow-card', (item) => {
-        const prompt = item.prompt || item.step || '';
-        if (prompt) ask(prompt);
-      });
-    }
-
-    async function fetchChat(message) {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, audience: currentAudience })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Request failed');
-      return data;
-    }
-
-    function closeCapabilityModal() {
-      document.getElementById('capabilityModal').classList.remove('active');
-    }
-
-    function openCapabilityModal(item) {
-      const audienceLabel =
-        currentAudience === 'technical' ? 'Technical guidance' :
-        currentAudience === 'architecture' ? 'Architecture guidance' :
-        'Business guidance';
-
-      document.getElementById('capabilityModalTitle').textContent = item.title || 'Capability';
-      document.getElementById('capabilityModalSub').textContent =
-        (item.workflow_stage || item.description || '') + ' • ' + audienceLabel;
-
-      const advisorActions = Array.isArray(item.advisor_actions)
-        ? item.advisor_actions.map(a => '<li>' + escapeHtml(a) + '</li>').join('')
-        : '';
-
-      let middleSection = '';
-      if (currentAudience === 'technical') {
-        middleSection =
-          '<div class="section-card">' +
-            '<div class="section-title">Technical Notes</div>' +
-            '<div class="section-body">' + formatSectionBody(item.technical_notes || 'No technical notes available.') + '</div>' +
-          '</div>' +
-          '<div class="section-card">' +
-            '<div class="section-title">Data Model Notes</div>' +
-            '<div class="section-body">' + formatSectionBody(item.data_model_notes || 'No data model notes available.') + '</div>' +
-          '</div>' +
-          '<div class="section-card">' +
-            '<div class="section-title">Integration Notes</div>' +
-            '<div class="section-body">' + formatSectionBody(item.integration_notes || 'No integration notes available.') + '</div>' +
-          '</div>';
-      } else if (currentAudience === 'architecture') {
-        middleSection =
-          '<div class="section-card">' +
-            '<div class="section-title">Architecture Relevance</div>' +
-            '<div class="section-body">' + formatSectionBody(item.integration_notes || 'No architecture notes available.') + '</div>' +
-          '</div>' +
-          '<div class="section-card">' +
-            '<div class="section-title">Data Boundary Notes</div>' +
-            '<div class="section-body">' + formatSectionBody(item.data_model_notes || 'No data boundary notes available.') + '</div>' +
-          '</div>';
-      } else {
-        middleSection =
-          '<div class="section-card">' +
-            '<div class="section-title">Business Guidance</div>' +
-            '<div class="section-body">' + formatSectionBody(item.business_guidance || 'No business guidance available.') + '</div>' +
-          '</div>' +
-          '<div class="cap-grid">' +
-            '<div class="section-card">' +
-              '<div class="section-title">Workflow Stage</div>' +
-              '<div class="section-body">' + formatSectionBody(item.workflow_stage || 'Not specified') + '</div>' +
-            '</div>' +
-            '<div class="section-card">' +
-              '<div class="section-title">Customer Impact</div>' +
-              '<div class="section-body">' + formatSectionBody(item.customer_impact || 'Not specified') + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="section-card">' +
-            '<div class="section-title">Advisor Actions</div>' +
-            '<div class="section-body">' + (advisorActions ? '<ul>' + advisorActions + '</ul>' : 'No advisor actions provided.') + '</div>' +
-          '</div>';
+    function renderParameters(rows) {
+      if (!rows || !rows.length) {
+        renderEmpty(paramsEl, 'No endpoint parameters available.');
+        return;
       }
 
-      const body =
-        '<div class="section-card">' +
-          '<div class="section-title">' + escapeHtml(item.title || 'Capability') + '</div>' +
-          '<div class="section-body">' + formatSectionBody(item.description || '') + '</div>' +
-        '</div>' +
-        middleSection +
-        '<div class="section-card">' +
-          '<div class="section-title">Explore Further</div>' +
-          '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-            '<button class="ghost-mini" onclick="ask(\'' + escapeHtml(item.prompt || item.title || '') + '\'); closeCapabilityModal();">Deep Explanation</button>' +
-            '<button class="ghost-mini" onclick="ask(\'Show schemas related to ' + escapeHtml(item.title || '') + '\'); closeCapabilityModal();">Related Schemas</button>' +
-            '<button class="ghost-mini" onclick="ask(\'Show example endpoints related to ' + escapeHtml(item.title || '') + '\'); closeCapabilityModal();">Related Endpoints</button>' +
-          '</div>' +
-        '</div>';
-
-      document.getElementById('capabilityModalBody').innerHTML = body;
-      document.getElementById('capabilityModal').classList.add('active');
-      setInspector(item.title || 'Capability', audienceLabel);
+      paramsEl.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>In</th>
+                <th>Required</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r) => `
+                <tr>
+                  <td>${escapeHtml(r.name || '')}</td>
+                  <td>${escapeHtml(r.in || '')}</td>
+                  <td>${r.required ? 'Yes' : 'No'}</td>
+                  <td>${escapeHtml(r.description || '')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
     }
 
-    function closeSchemaModal() {
-      document.getElementById('schemaModal').classList.remove('active');
-    }
-
-    function showSchemaTab(tab) {
-      document.getElementById('schemaExplainTab').classList.toggle('active', tab === 'explain');
-      document.getElementById('schemaOpenApiTab').classList.toggle('active', tab === 'openapi');
-      document.getElementById('schemaExplainPane').classList.toggle('active', tab === 'explain');
-      document.getElementById('schemaOpenApiPane').classList.toggle('active', tab === 'openapi');
-    }
-
-    async function openSchemaModal(item) {
-      document.getElementById('schemaModalTitle').textContent = item.title || 'Schema Detail';
-      document.getElementById('schemaModalSub').textContent = 'Explanation and OpenAPI view';
-      document.getElementById('schemaExplainPane').innerHTML =
-        '<div class="section-card"><div class="section-title">Loading…</div><div class="section-body">Fetching schema detail.</div></div>';
-      document.getElementById('schemaOpenApiPane').innerHTML =
-        '<div class="schema-raw">Loading schema…</div>';
-
-      currentRawSchema = null;
-      showSchemaTab('explain');
-      document.getElementById('schemaModal').classList.add('active');
-      setInspector(item.title || 'Schema', 'Schema detail view');
-
-      try {
-        const data = await fetchChat(item.prompt || item.title || '');
-
-        const sections = Array.isArray(data.sections) && data.sections.length
-          ? data.sections
-          : [{ title: item.title || 'Schema Detail', body: data.answer || '' }];
-
-        const explainHtml = sections.map(section => (
-          '<div class="section-card">' +
-            '<div class="section-title">' + escapeHtml(section.title || 'Overview') + '</div>' +
-            '<div class="section-body">' + formatSectionBody(section.body || '') + '</div>' +
-          '</div>'
-        )).join('');
-
-        document.getElementById('schemaExplainPane').innerHTML = explainHtml;
-
-        currentRawSchema = data.raw_schema || null;
-
-        if (currentRawSchema) {
-          document.getElementById('schemaOpenApiPane').innerHTML =
-            '<div class="schema-raw">' + escapeHtml(JSON.stringify(currentRawSchema, null, 2)) + '</div>';
-        } else {
-          document.getElementById('schemaOpenApiPane').innerHTML =
-            '<div class="section-card"><div class="section-title">OpenAPI Schema</div><div class="section-body">Raw OpenAPI schema is not available for this schema right now.</div></div>';
-        }
-      } catch (err) {
-        document.getElementById('schemaExplainPane').innerHTML =
-          '<div class="section-card"><div class="section-title">Error</div><div class="section-body">' + escapeHtml(err.message || String(err)) + '</div></div>';
-        document.getElementById('schemaOpenApiPane').innerHTML =
-          '<div class="section-card"><div class="section-title">OpenAPI Schema</div><div class="section-body">Schema detail could not be loaded.</div></div>';
+    function renderJsonBlock(target, value, emptyText) {
+      if (value === undefined || value === null) {
+        renderEmpty(target, emptyText);
+        return;
       }
+      target.innerHTML = `<pre>${escapeHtml(prettyJson(value))}</pre>`;
     }
 
-    async function send() {
-      const message = document.getElementById('prompt').value.trim();
+    function applyMeta(data) {
+      audiencePill.textContent = `Audience: ${data.audience || currentAudience}`;
+      toolPill.textContent = `Tool: ${data.tool_name || '—'}`;
+      progressivePill.textContent = `Progressive: ${Boolean(data.progressive)}`;
+    }
+
+    async function ask(promptOverride) {
+      const message = (promptOverride ?? promptEl.value).trim();
       if (!message) {
-        setStatus('Please enter a prompt.', true);
+        setStatus('Please enter a prompt.', 'error');
         return;
       }
 
-      setLoading(true);
-      setStatus('Thinking...');
-      document.getElementById('sectionsView').innerHTML = '';
-      document.getElementById('rawView').textContent = '';
+      promptEl.value = message;
+      setStatus('Working...', 'ok');
+      answerEl.textContent = 'Loading...';
 
       try {
-        const data = await fetchChat(message);
-        lastRawAnswer = data.answer || '';
-        document.getElementById('rawView').textContent = lastRawAnswer;
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            audience: currentAudience
+          })
+        });
 
-        renderSections(data.sections || [], data.answer || '');
-        document.getElementById('toolName').textContent = data.tool_name || '—';
-        document.getElementById('toolArgs').innerHTML =
-          '<span class="code">' + escapeHtml(JSON.stringify(data.tool_arguments || {})) + '</span>';
+        const data = await res.json();
 
-        renderObjectCards('capabilityCards', data.capability_cards || [], 'capability-card', (item) => openCapabilityModal(item));
-        renderWorkflowMap(data.workflow_map || []);
-        renderStringCards('exploreNext', data.explore_next || [], 'action-card');
-        renderObjectCards('schemaCards', data.schema_cards || [], 'schema-card', (item) => openSchemaModal(item));
-        renderObjectCards('endpointCards', data.endpoint_cards || [], 'endpoint-card', (item) => ask(item.prompt || item.title || ''));
+        if (!res.ok) {
+          throw new Error(data.error || 'Request failed');
+        }
 
-        renderStringCards('executivePrompts', [
-          'Give me an overview of the Appointment API',
-          'Give me an overview of the Multi-Point Inspection API',
-          'Show me the business capabilities of the Multi-Point Inspection API',
-          'Show me the business capabilities of the Appointment API',
-          'Show me the schemas of the Multi-Point Inspection API'
-        ], 'play-card');
+        setStatus('Response ready.', 'ok');
+        answerEl.textContent = data.answer || 'No answer returned.';
+        applyMeta(data);
 
-        const note = `Audience: ${data.audience || currentAudience}`;
-        setInspector(data.tool_name || 'Result loaded', 'Inspector content updated from the latest response.', note);
-        setStatus('Done.');
+        renderSections(data.sections || []);
+        renderParameters(data.endpoint_parameters || []);
+        renderJsonBlock(requestExampleEl, data.request_example, 'No request example available.');
+        renderJsonBlock(responseExampleEl, data.response_example, 'No response example available.');
+
+        renderCards(relatedSchemasEl, data.related_schema_cards || [], (item) => {
+          if (item?.prompt) ask(item.prompt);
+        });
+
+        renderCards(capabilitiesEl, data.capability_cards || [], (item) => {
+          if (item?.prompt) ask(item.prompt);
+        });
+
+        renderCards(endpointsEl, data.endpoint_cards || [], (item) => {
+          if (item?.prompt) ask(item.prompt);
+        });
+
+        renderCards(schemasEl, data.schema_cards || [], (item) => {
+          if (item?.prompt) ask(item.prompt);
+        });
+
+        renderCards(workflowEl, data.workflow_map || [], (item) => {
+          if (item?.prompt) ask(item.prompt);
+        });
       } catch (err) {
-        document.getElementById('rawView').textContent = 'Error: ' + (err.message || String(err));
-        renderSections([{ title: 'Error', body: err.message || String(err) }], '');
-        setStatus('Request failed.', true);
-      } finally {
-        setLoading(false);
+        setStatus(err.message || 'Something went wrong.', 'error');
+        answerEl.textContent = 'Error';
+        renderEmpty(sectionsEl, 'No structured sections.');
+        renderEmpty(paramsEl, 'No endpoint parameters available.');
+        renderEmpty(requestExampleEl, 'No request example available.');
+        renderEmpty(responseExampleEl, 'No response example available.');
+        renderEmpty(relatedSchemasEl, 'Nothing to show yet.');
+        renderEmpty(capabilitiesEl, 'Nothing to show yet.');
+        renderEmpty(endpointsEl, 'Nothing to show yet.');
+        renderEmpty(schemasEl, 'Nothing to show yet.');
+        renderEmpty(workflowEl, 'Nothing to show yet.');
       }
     }
 
-    document.getElementById('prompt').addEventListener('keydown', (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-        send();
+    askBtn.addEventListener('click', () => ask());
+
+    clearBtn.addEventListener('click', () => {
+      promptEl.value = '';
+      setStatus('', '');
+      answerEl.textContent = 'Ask a question to explore the API.';
+      sectionsEl.innerHTML = '';
+      paramsEl.innerHTML = '';
+      requestExampleEl.innerHTML = '';
+      responseExampleEl.innerHTML = '';
+      relatedSchemasEl.innerHTML = '';
+      capabilitiesEl.innerHTML = '';
+      endpointsEl.innerHTML = '';
+      schemasEl.innerHTML = '';
+      workflowEl.innerHTML = '';
+      audiencePill.textContent = `Audience: ${currentAudience}`;
+      toolPill.textContent = 'Tool: —';
+      progressivePill.textContent = 'Progressive: false';
+    });
+
+    promptEl.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        ask();
       }
     });
 
-    renderStringCards('executivePrompts', [
-      'Give me an overview of the Appointment API',
-      'Give me an overview of the Multi-Point Inspection API',
-      'Show me the business capabilities of the Multi-Point Inspection API',
-      'Show me the business capabilities of the Appointment API',
-      'Show me the schemas of the Multi-Point Inspection API'
-    ], 'play-card');
+    document.querySelectorAll('.audience-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.audience-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentAudience = btn.dataset.audience;
+        audiencePill.textContent = `Audience: ${currentAudience}`;
+      });
+    });
+
+    document.querySelectorAll('.quick-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        promptEl.value = item.textContent.trim();
+        ask();
+      });
+    });
+
+    renderEmpty(sectionsEl, 'No structured sections.');
+    renderEmpty(paramsEl, 'No endpoint parameters available.');
+    renderEmpty(requestExampleEl, 'No request example available.');
+    renderEmpty(responseExampleEl, 'No response example available.');
+    renderEmpty(relatedSchemasEl, 'Nothing to show yet.');
+    renderEmpty(capabilitiesEl, 'Nothing to show yet.');
+    renderEmpty(endpointsEl, 'Nothing to show yet.');
+    renderEmpty(schemasEl, 'Nothing to show yet.');
+    renderEmpty(workflowEl, 'Nothing to show yet.');
   </script>
 </body>
 </html>

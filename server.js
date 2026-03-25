@@ -216,7 +216,6 @@ function normalizeEndpointText(endpoint = '') {
   return String(endpoint)
     .toUpperCase()
     .replace('/INSPECTIOS', '/INSPECTIONS')
-    .replace('/INSPECTIO', '/INSPECTION')
     .replace(/\s+/g, ' ')
     .trim();
 }

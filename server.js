@@ -211,6 +211,35 @@ function wantsOverview(message = '') {
   );
 }
 
+function wantsRichApiDescription(message = '') {
+  const m = String(message).toLowerCase();
+  return (
+    m.includes('rich description') ||
+    m.includes('detailed description') ||
+    m.includes('describe the api') ||
+    m.includes('describe this api') ||
+    m.includes('full description') ||
+    m.includes('deep description') ||
+    m.includes('rich api description')
+  );
+}
+
+function wantsSubApiDesign(message = '') {
+  const m = String(message).toLowerCase();
+  return (
+    m.includes('sub-api') ||
+    m.includes('sub api') ||
+    m.includes('get operations only') ||
+    m.includes('read-only api') ||
+    m.includes('read only api') ||
+    m.includes('derive an api') ||
+    m.includes('build an api from') ||
+    m.includes('build a sub-api') ||
+    m.includes('sub api with') ||
+    m.includes('propose a sub-api')
+  );
+}
+
 function wantsSchemas(message = '') {
   return String(message).toLowerCase().includes('schema');
 }
@@ -1079,6 +1108,142 @@ Write a rich structured answer that preserves the depth of the built-in domain o
   };
 }
 
+async function buildRichApiDescriptionResponse(domain, message, audience) {
+  const [overview, ops, schemas] = await Promise.all([
+    safeGetOverview(domain),
+    safeListOperations(domain, 12),
+    safeListSchemas(domain, 16)
+  ]);
+
+  const builtInOverview = getAudienceOverview(domain, audience);
+
+  let answer;
+  try {
+    const response = await withTimeout(
+      client.responses.create({
+        model: MODEL,
+        input: `You are a STAR automotive retail API architect.
+Audience: ${audience}
+
+User request:
+${message}
+
+Domain:
+${domain}
+
+Built-in audience-aware description:
+${builtInOverview}
+
+Live overview:
+${JSON.stringify(overview)}
+
+Operations:
+${JSON.stringify(ops)}
+
+Schemas:
+${JSON.stringify(schemas)}
+
+Produce a rich API description tailored to the audience.
+
+Return:
+1. Direct answer
+2. Core responsibilities
+3. Main resources and schemas
+4. Workflow or lifecycle
+5. Integration or architecture notes
+6. Useful next steps`
+      }),
+      16000,
+      'OpenAI rich API description generation'
+    );
+
+    answer = response.output_text;
+  } catch {
+    answer = builtInOverview;
+  }
+
+  const liveEndpointCards = deriveEndpointCards(ops, domain);
+  const liveSchemaCards = deriveSchemaCards(schemas, domain);
+
+  return {
+    answer,
+    sections: extractSections(answer),
+    audience,
+    capability_cards: getBuiltInCapabilityCards(domain),
+    endpoint_cards: liveEndpointCards.length ? liveEndpointCards : getBuiltInEndpointCards(domain),
+    schema_cards: liveSchemaCards.length ? liveSchemaCards : getBuiltInSchemaCards(domain),
+    workflow_map: getBuiltInWorkflowMap(domain),
+    progressive: liveEndpointCards.length === 0 || liveSchemaCards.length === 0
+  };
+}
+
+async function buildSubApiResponse(domain, message, audience) {
+  const ops = await safeListOperations(domain, 20);
+  const schemas = await safeListSchemas(domain, 16);
+
+  let answer;
+  try {
+    const response = await withTimeout(
+      client.responses.create({
+        model: MODEL,
+        input: `You are a STAR automotive retail API architect.
+Audience: ${audience}
+
+User request:
+${message}
+
+Domain:
+${domain}
+
+Operations:
+${JSON.stringify(ops)}
+
+Schemas:
+${JSON.stringify(schemas)}
+
+Design a focused sub-API based on the user's request.
+
+Return:
+1. Direct answer
+2. Proposed resources or endpoints
+3. Proposed schemas
+4. Design notes
+5. Suggested next steps`
+      }),
+      18000,
+      'OpenAI sub-api generation'
+    );
+
+    answer = response.output_text;
+  } catch {
+    answer = `1. Direct answer
+A focused sub-API can be derived for the ${domain} domain.
+
+2. Proposed resources or endpoints
+Start with a reduced set of read-oriented GET operations that expose the main collection and entity retrieval flows.
+
+3. Proposed schemas
+Reuse the core read models and supporting reference schemas needed for consumers.
+
+4. Design notes
+Prefer a narrow read-only surface, stable identifiers, and minimal cross-domain coupling.
+
+5. Suggested next steps
+List the GET operations for the domain and identify which schemas should be exposed in the reduced API.`;
+  }
+
+  return {
+    answer,
+    sections: extractSections(answer),
+    audience,
+    capability_cards: getBuiltInCapabilityCards(domain),
+    endpoint_cards: deriveEndpointCards(ops, domain).length ? deriveEndpointCards(ops, domain) : getBuiltInEndpointCards(domain),
+    schema_cards: deriveSchemaCards(schemas, domain).length ? deriveSchemaCards(schemas, domain) : getBuiltInSchemaCards(domain),
+    workflow_map: getBuiltInWorkflowMap(domain),
+    progressive: false
+  };
+}
+
 async function buildSchemaResponse(domain, message, audience) {
   const schemas = await safeListSchemas(domain, 16);
   const liveSchemaCards = deriveSchemaCards(schemas, domain);
@@ -1353,6 +1518,36 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
+    if (domain && wantsSubApiDesign(message)) {
+      const result = await buildSubApiResponse(domain, message, audience);
+      return res.json({
+        ...result,
+        audience,
+        tool_name: 'sub_api_pipeline',
+        tool_arguments: { domain_name: domain, audience },
+        explore_next: [
+          `List operations for the ${domain} API`,
+          `Show me the schemas of the ${domain} API`,
+          `Show example endpoints for the ${domain} API`
+        ]
+      });
+    }
+
+    if (domain && wantsRichApiDescription(message)) {
+      const result = await buildRichApiDescriptionResponse(domain, message, audience);
+      return res.json({
+        ...result,
+        audience,
+        tool_name: 'rich_api_description_pipeline',
+        tool_arguments: { domain_name: domain, audience },
+        explore_next: [
+          `Show me the business capabilities of the ${domain} API`,
+          `Show me the schemas of the ${domain} API`,
+          `Show example endpoints for the ${domain} API`
+        ]
+      });
+    }
+
     if (domain && wantsCapabilities(message)) {
       const result = await buildCapabilityResponse(domain, audience);
       return res.json({
@@ -1427,9 +1622,13 @@ ${audience}
 Data:
 ${JSON.stringify(result)}
 
-Answer clearly and concisely in the context of STAR automotive APIs.`
+Answer clearly and concisely in the context of STAR automotive APIs.
+If the user is asking to design, derive, propose, build, or outline a sub-API, provide a structured proposal with:
+1. Direct answer
+2. Proposed resources or operations
+3. Suggested next steps`
       }),
-      8000,
+      15000,
       'OpenAI answer generation'
     );
 

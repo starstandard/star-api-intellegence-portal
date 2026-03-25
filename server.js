@@ -312,6 +312,8 @@ function wantsSubApiDesign(message = '') {
     m.includes('sub api') ||
     m.includes('get operations only') ||
     m.includes('operation only') ||
+    m.includes('only for the sub-api') ||
+    m.includes('only for the sub api') ||
     m.includes('read-only api') ||
     m.includes('read only api') ||
     m.includes('derive an api') ||
@@ -584,8 +586,99 @@ function findOpenApiEndpoint(endpointTitle) {
 }
 
 /* --------------------------------------------------
- * BUILT-IN CONTENT HELPERS
+ * BUILT-IN CONTENT
  * -------------------------------------------------- */
+
+const DOMAIN_CONFIG = {
+  appointment: {
+    business_overview: `1. What it is
+The Appointment API represents the dealership service scheduling and intake layer. It helps coordinate customer bookings, requested services, timing expectations, and operational readiness before the vehicle enters the service lane.
+
+2. Core concepts
+The API centers on the service appointment as the planning object that connects customer intent, vehicle context, dealership availability, and requested work.
+
+3. Main resources
+Typical resources include the appointment itself, requested services, customer and vehicle references, timing details, and status information needed by dealership systems.
+
+4. Typical workflow
+A customer books service, the dealership validates the request, the advisor confirms timing and service intent, and the service lane uses the appointment context to prepare intake and execution.
+
+5. What to explore next
+Look at business capabilities, representative endpoints, and schemas related to scheduling, intake, and service preparation.`,
+    technical_overview: `1. What it is
+The Appointment API is the scheduling and intake domain for dealership service operations. It models appointment creation, requested service context, party and vehicle references, timing, and workflow state.
+
+2. Technical model
+A typical implementation treats Appointment as a bounded-context resource with references to customer, vehicle, requested services, and scheduling metadata. The API helps move from customer intent into executable service-lane context.
+
+3. Resource families
+Typical technical resources include appointment entities, request details, time windows, references, and status fields needed for intake orchestration.
+
+4. Integration concerns
+Technical consumers care about identifiers, party and vehicle references, status transitions, and how appointment context flows into downstream service systems.
+
+5. What to explore next
+Inspect schema cards, endpoint cards, required fields, and object relationships.`,
+    architecture_overview: `1. Bounded context role
+The Appointment API sits at the front of the dealership service journey. It owns service-booking and pre-intake coordination concerns.
+
+2. Boundary
+Its responsibility is not repair execution or detailed inspection results. Its role is to create the operational context that downstream domains consume.
+
+3. Cross-domain relationships
+Appointment typically connects to customer, vehicle, scheduling, intake, and downstream service execution contexts.
+
+4. Architectural significance
+This domain is valuable because it separates scheduling intent from execution concerns while still providing the references needed for downstream orchestration.
+
+5. What to explore next
+Review bounded-context relationships, key references, and how Appointment feeds inspection and repair workflows.`
+  },
+  'multi-point-inspection': {
+    business_overview: `1. What it is
+The Multi-Point Inspection API is a dealership service workflow domain that supports structured vehicle health checks. It covers the lifecycle from launching an inspection through technician findings, recommendations, customer decisions, and final completion.
+
+2. Core concepts
+The domain revolves around the inspection itself, what is being inspected, what was found, and what action should be recommended or approved.
+
+3. Main resources
+Typical resources include the inspection record, findings, condition evidence, media, recommendations, approval outcomes, and workflow status.
+
+4. Typical workflow
+An inspection is started from service intake or repair-order context. The technician records findings and supporting evidence. The advisor reviews the results, prepares recommendations, communicates with the customer, captures approvals or declines, and moves approved work into execution.
+
+5. What to explore next
+Review business capabilities, workflow stages, representative endpoints, and schemas related to findings, recommendations, approvals, and inspection completion.`,
+    technical_overview: `1. What it is
+The Multi-Point Inspection API is the structured inspection domain for dealership vehicle health checks. It models the inspection lifecycle, findings, media, recommendations, and decision outcomes.
+
+2. Technical model
+Technical consumers should think in terms of inspection entities, finding collections, evidence/media attachments, recommendation structures, and approval or completion states.
+
+3. Resource families
+Common resource families include inspection records, line-item findings, media or attachments, recommendation artifacts, customer decision objects, and workflow status indicators.
+
+4. Integration concerns
+Developers care about how inspection context is created, how findings are represented, how recommendations connect to actionable work, and how approval outcomes are captured for downstream execution.
+
+5. What to explore next
+Inspect endpoints, schema groups, object relationships, identifiers, and how inspection data flows into service execution contexts.`,
+    architecture_overview: `1. Bounded context role
+The Multi-Point Inspection API owns structured inspection and recommendation workflow within the dealership service domain.
+
+2. Boundary
+Its responsibility is not full appointment scheduling or full repair-order execution. It sits between intake/service context and downstream execution decisions.
+
+3. Cross-domain relationships
+MPI usually depends on upstream intake, visit, or repair-order context and feeds downstream recommendation, approval, and execution processes.
+
+4. Architectural significance
+This domain is important because it transforms technician-level observations into customer-facing service decisions while preserving operational traceability.
+
+5. What to explore next
+Review relationships between inspection, findings, recommendations, approvals, and execution-oriented downstream systems.`
+  }
+};
 
 function getAudienceOverview(domain, audience) {
   const cfg = DOMAIN_CONFIG[domain];
@@ -1433,19 +1526,6 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-    if (domain && requestedEndpoint) {
-      const result = await buildEndpointDetailResponse(domain, requestedEndpoint, audience);
-      return res.json({
-        ...result,
-        tool_name: 'endpoint_detail_pipeline',
-        tool_arguments: { domain_name: domain, endpoint: requestedEndpoint, audience },
-        explore_next: [
-          `Show me the schemas of the ${domain} API`,
-          `Show me the business capabilities of the ${domain} API`
-        ]
-      });
-    }
-
     if (domain && wantsSubApiDesign(message)) {
       const result = await buildSubApiResponse(domain, message, audience);
       return res.json({
@@ -1457,6 +1537,19 @@ app.post('/api/chat', async (req, res) => {
           `List operations for the ${domain} API`,
           `Show me the schemas of the ${domain} API`,
           `Show example endpoints for the ${domain} API`
+        ]
+      });
+    }
+
+    if (domain && requestedEndpoint) {
+      const result = await buildEndpointDetailResponse(domain, requestedEndpoint, audience);
+      return res.json({
+        ...result,
+        tool_name: 'endpoint_detail_pipeline',
+        tool_arguments: { domain_name: domain, endpoint: requestedEndpoint, audience },
+        explore_next: [
+          `Show me the schemas of the ${domain} API`,
+          `Show me the business capabilities of the ${domain} API`
         ]
       });
     }

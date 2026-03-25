@@ -6,15 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --bg: #0b1020;
-      --panel: #121935;
-      --panel-2: #182246;
+      --bg: #08101f;
+      --panel: #121a34;
+      --panel-2: #182347;
+      --panel-3: #0d1430;
       --text: #edf2ff;
       --muted: #a8b3d1;
       --line: #2b3769;
       --brand: #7aa2ff;
+      --brand-2: #95b3ff;
+      --ok: #7ee0a8;
+      --err: #ff9a9a;
+      --warn: #ffd27a;
       --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
-      --radius: 18px;
     }
 
     * { box-sizing: border-box; }
@@ -23,23 +27,26 @@
       padding: 0;
       background: linear-gradient(180deg, #09101f 0%, #0c1327 100%);
       color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    button, input, textarea, select { font: inherit; }
+    button, textarea {
+      font: inherit;
+    }
 
     .app {
-      max-width: 1400px;
+      max-width: 1440px;
       margin: 0 auto;
       padding: 24px;
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 340px 1fr;
       gap: 20px;
       min-height: 100vh;
     }
 
-    .sidebar, .main {
-      background: rgba(18, 25, 53, 0.88);
+    .sidebar,
+    .main {
+      background: rgba(18, 26, 52, 0.92);
       border: 1px solid var(--line);
       border-radius: 24px;
       box-shadow: var(--shadow);
@@ -47,52 +54,55 @@
     }
 
     .sidebar {
-      padding: 20px;
+      padding: 22px;
       position: sticky;
       top: 24px;
       height: fit-content;
     }
 
     .main {
-      padding: 20px;
+      padding: 22px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       margin-bottom: 20px;
     }
 
     .brand-badge {
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 14px;
       background: linear-gradient(135deg, var(--brand), #5f7cff);
+      color: #081120;
       display: grid;
       place-items: center;
-      color: #081120;
       font-weight: 800;
+      font-size: 24px;
     }
 
     .brand h1 {
-      font-size: 18px;
       margin: 0;
+      font-size: 20px;
+      line-height: 1.1;
     }
 
     .brand p {
-      margin: 2px 0 0;
+      margin: 4px 0 0;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 14px;
+      line-height: 1.35;
     }
 
     .label {
       display: block;
+      margin: 18px 0 8px;
+      color: var(--muted);
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--muted);
-      margin: 14px 0 8px;
     }
 
     .audience-grid {
@@ -101,45 +111,29 @@
       gap: 8px;
     }
 
-    .audience-btn {
-      border: 1px solid var(--line);
-      background: var(--panel-2);
-      color: var(--text);
-      padding: 10px 8px;
-      border-radius: 12px;
-      cursor: pointer;
-    }
-
-    .audience-btn.active {
-      background: linear-gradient(135deg, rgba(122, 162, 255, 0.24), rgba(151, 181, 255, 0.16));
-      border-color: var(--brand);
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 160px;
-      resize: vertical;
-      border: 1px solid var(--line);
-      background: #0d1430;
-      color: var(--text);
-      border-radius: 16px;
-      padding: 14px;
-      line-height: 1.45;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
+    .audience-btn,
     .btn {
       border: 1px solid var(--line);
       background: var(--panel-2);
       color: var(--text);
-      padding: 11px 14px;
+      padding: 11px 12px;
       border-radius: 14px;
       cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .audience-btn:hover,
+    .btn:hover,
+    .quick-item:hover,
+    .card.clickable:hover {
+      transform: translateY(-1px);
+      border-color: var(--brand);
+    }
+
+    .audience-btn.active {
+      background: linear-gradient(135deg, rgba(122, 162, 255, 0.22), rgba(149, 179, 255, 0.16));
+      border-color: var(--brand);
+      box-shadow: inset 0 0 0 1px rgba(122, 162, 255, 0.25);
     }
 
     .btn.primary {
@@ -149,43 +143,78 @@
       font-weight: 700;
     }
 
+    .prompt-wrap {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #0b1330;
+      overflow: hidden;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      padding: 16px;
+      line-height: 1.5;
+    }
+
+    textarea::placeholder {
+      color: #8f9ec7;
+      opacity: 1;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
     .quick-list {
       display: grid;
-      gap: 8px;
+      gap: 10px;
       margin-top: 12px;
     }
 
     .quick-item {
       border: 1px solid var(--line);
-      background: #0d1430;
-      padding: 10px 12px;
-      border-radius: 12px;
+      background: var(--panel-3);
       color: var(--muted);
+      padding: 12px 14px;
+      border-radius: 14px;
       cursor: pointer;
+      line-height: 1.35;
+      transition: 0.18s ease;
     }
 
     .topbar {
       display: flex;
       justify-content: space-between;
       align-items: start;
-      gap: 16px;
+      gap: 18px;
       margin-bottom: 18px;
     }
 
     .title h2 {
       margin: 0;
-      font-size: 24px;
+      font-size: 28px;
+      line-height: 1.1;
     }
 
     .title p {
       margin: 6px 0 0;
       color: var(--muted);
+      font-size: 15px;
     }
 
     .meta {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .pill {
@@ -193,40 +222,64 @@
       background: #0d1430;
       color: var(--muted);
       border-radius: 999px;
-      padding: 8px 12px;
+      padding: 9px 13px;
       font-size: 12px;
+      white-space: nowrap;
     }
 
     .status {
+      display: none;
       margin-bottom: 16px;
-      padding: 12px 14px;
       border-radius: 14px;
+      padding: 12px 14px;
       border: 1px solid var(--line);
       background: #0d1430;
       color: var(--muted);
-      display: none;
     }
 
     .status.show { display: block; }
-    .status.error { color: #ffd2d2; }
-    .status.ok { color: #d8ffe8; }
+    .status.ok {
+      color: #dff8e8;
+      border-color: rgba(126, 224, 168, 0.35);
+      background: rgba(126, 224, 168, 0.08);
+    }
+    .status.error {
+      color: #ffe0e0;
+      border-color: rgba(255, 154, 154, 0.35);
+      background: rgba(255, 154, 154, 0.08);
+    }
+    .status.loading {
+      color: #d7e5ff;
+      border-color: rgba(122, 162, 255, 0.35);
+      background: rgba(122, 162, 255, 0.08);
+    }
 
     .section-title {
-      margin: 18px 0 10px;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+      margin: 20px 0 10px;
       color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
     }
 
     .card {
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(24, 34, 70, 0.95), rgba(13, 20, 48, 0.95));
+      background: linear-gradient(180deg, rgba(24, 35, 71, 0.95), rgba(13, 20, 48, 0.95));
       border-radius: 18px;
       padding: 16px;
     }
 
-    .card h3, .card h4 { margin: 0 0 8px; }
+    .card.clickable {
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .card h3,
+    .card h4 {
+      margin: 0 0 8px;
+      line-height: 1.25;
+    }
+
     .card p {
       margin: 0;
       color: var(--muted);
@@ -234,13 +287,11 @@
       white-space: pre-wrap;
     }
 
-    .card.clickable { cursor: pointer; }
-
     .answer {
       white-space: pre-wrap;
-      line-height: 1.6;
-      color: var(--text);
+      line-height: 1.65;
       font-size: 15px;
+      min-height: 28px;
     }
 
     .grid {
@@ -248,8 +299,13 @@
       gap: 16px;
     }
 
-    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 
     .table-wrap {
       overflow: auto;
@@ -266,20 +322,21 @@
 
     th, td {
       padding: 12px 14px;
-      text-align: left;
       border-bottom: 1px solid var(--line);
+      text-align: left;
       vertical-align: top;
     }
 
     th {
-      color: #d7e2ff;
-      background: rgba(255,255,255,0.02);
+      color: #dde7ff;
+      background: rgba(255, 255, 255, 0.02);
       font-size: 13px;
     }
 
     td {
       color: var(--muted);
       font-size: 14px;
+      line-height: 1.45;
     }
 
     pre {
@@ -301,12 +358,34 @@
       padding: 18px;
       color: var(--muted);
       text-align: center;
+      background: rgba(13, 20, 48, 0.35);
     }
 
-    @media (max-width: 1080px) {
-      .app { grid-template-columns: 1fr; }
-      .sidebar { position: static; }
-      .grid.two, .grid.three { grid-template-columns: 1fr; }
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .grid.two,
+      .grid.three {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        flex-direction: column;
+      }
+
+      .meta {
+        justify-content: flex-start;
+      }
     }
   </style>
 </head>
@@ -329,8 +408,10 @@
       </div>
 
       <label class="label" for="prompt">Ask</label>
-      <textarea id="prompt" placeholder="Try:
+      <div class="prompt-wrap">
+        <textarea id="prompt" placeholder="Ask something like:
 Explain GET /inspections/{id}/findings for the multi-point-inspection API"></textarea>
+      </div>
 
       <div class="actions">
         <button class="btn primary" id="askBtn">Ask</button>
@@ -521,16 +602,30 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
       progressivePill.textContent = `Progressive: ${Boolean(data.progressive)}`;
     }
 
+    function resetPanels() {
+      renderEmpty(sectionsEl, 'No structured sections.');
+      renderEmpty(paramsEl, 'No endpoint parameters available.');
+      renderEmpty(requestExampleEl, 'No request example available.');
+      renderEmpty(responseExampleEl, 'No response example available.');
+      renderEmpty(relatedSchemasEl, 'Nothing to show yet.');
+      renderEmpty(capabilitiesEl, 'Nothing to show yet.');
+      renderEmpty(endpointsEl, 'Nothing to show yet.');
+      renderEmpty(schemasEl, 'Nothing to show yet.');
+      renderEmpty(workflowEl, 'Nothing to show yet.');
+    }
+
     async function ask(promptOverride) {
       const message = (promptOverride ?? promptEl.value).trim();
+
       if (!message) {
         setStatus('Please enter a prompt.', 'error');
         return;
       }
 
       promptEl.value = message;
-      setStatus('Working...', 'ok');
+      setStatus('Working...', 'loading');
       answerEl.textContent = 'Loading...';
+      resetPanels();
 
       try {
         const res = await fetch('/api/chat', {
@@ -542,10 +637,11 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
           })
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        console.log('STAR response:', data);
 
         if (!res.ok) {
-          throw new Error(data.error || 'Request failed');
+          throw new Error(data.error || `Request failed with status ${res.status}`);
         }
 
         setStatus('Response ready.', 'ok');
@@ -577,17 +673,10 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
           if (item?.prompt) ask(item.prompt);
         });
       } catch (err) {
+        console.error('STAR UI error:', err);
         setStatus(err.message || 'Something went wrong.', 'error');
         answerEl.textContent = 'Error';
-        renderEmpty(sectionsEl, 'No structured sections.');
-        renderEmpty(paramsEl, 'No endpoint parameters available.');
-        renderEmpty(requestExampleEl, 'No request example available.');
-        renderEmpty(responseExampleEl, 'No response example available.');
-        renderEmpty(relatedSchemasEl, 'Nothing to show yet.');
-        renderEmpty(capabilitiesEl, 'Nothing to show yet.');
-        renderEmpty(endpointsEl, 'Nothing to show yet.');
-        renderEmpty(schemasEl, 'Nothing to show yet.');
-        renderEmpty(workflowEl, 'Nothing to show yet.');
+        resetPanels();
       }
     }
 
@@ -597,18 +686,10 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
       promptEl.value = '';
       setStatus('', '');
       answerEl.textContent = 'Ask a question to explore the API.';
-      sectionsEl.innerHTML = '';
-      paramsEl.innerHTML = '';
-      requestExampleEl.innerHTML = '';
-      responseExampleEl.innerHTML = '';
-      relatedSchemasEl.innerHTML = '';
-      capabilitiesEl.innerHTML = '';
-      endpointsEl.innerHTML = '';
-      schemasEl.innerHTML = '';
-      workflowEl.innerHTML = '';
-      audiencePill.textContent = `Audience: ${currentAudience}`;
       toolPill.textContent = 'Tool: —';
       progressivePill.textContent = 'Progressive: false';
+      audiencePill.textContent = `Audience: ${currentAudience}`;
+      resetPanels();
     });
 
     promptEl.addEventListener('keydown', (e) => {
@@ -633,15 +714,7 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
       });
     });
 
-    renderEmpty(sectionsEl, 'No structured sections.');
-    renderEmpty(paramsEl, 'No endpoint parameters available.');
-    renderEmpty(requestExampleEl, 'No request example available.');
-    renderEmpty(responseExampleEl, 'No response example available.');
-    renderEmpty(relatedSchemasEl, 'Nothing to show yet.');
-    renderEmpty(capabilitiesEl, 'Nothing to show yet.');
-    renderEmpty(endpointsEl, 'Nothing to show yet.');
-    renderEmpty(schemasEl, 'Nothing to show yet.');
-    renderEmpty(workflowEl, 'Nothing to show yet.');
+    resetPanels();
   </script>
 </body>
 </html>

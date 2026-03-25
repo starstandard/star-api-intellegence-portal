@@ -158,11 +158,46 @@ async function toolCached(name, args = {}) {
 }
 
 /* --------------------------------------------------
- * HELPERS
+ * NORMALIZATION / INTENT HELPERS
  * -------------------------------------------------- */
 
+function normalizeLooseText(message = '') {
+  return String(message)
+    .toLowerCase()
+    .replace(/inspectios/g, 'inspections')
+    .replace(/opertion/g, 'operation')
+    .replace(/operationonly/g, 'operation only')
+    .replace(/subapi/g, 'sub api')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function detectDomainFromEndpoint(message = '') {
+  const m = normalizeLooseText(message);
+
+  if (
+    m.includes('/inspections') ||
+    m.includes('/inspection') ||
+    m.includes('/inspections/{id}') ||
+    m.includes('/inspections/')
+  ) {
+    return 'multi-point-inspection';
+  }
+
+  if (
+    m.includes('/appointments') ||
+    m.includes('/appointment') ||
+    m.includes('/appointments/{id}') ||
+    m.includes('/appointments/')
+  ) {
+    return 'appointment';
+  }
+
+  return null;
+}
+
 function detectDomain(message = '') {
-  const m = String(message).toLowerCase();
+  const m = normalizeLooseText(message);
 
   if (
     m.includes('multi-point-inspection') ||
@@ -177,6 +212,9 @@ function detectDomain(message = '') {
     return 'appointment';
   }
 
+  const endpointDomain = detectDomainFromEndpoint(message);
+  if (endpointDomain) return endpointDomain;
+
   return null;
 }
 
@@ -188,7 +226,7 @@ function normalizeAudience(audience = '') {
 }
 
 function wantsCapabilities(message = '') {
-  const m = String(message).toLowerCase();
+  const m = normalizeLooseText(message);
   return (
     m.includes('capabilities') ||
     m.includes('business capabilities') ||
@@ -200,7 +238,7 @@ function wantsCapabilities(message = '') {
 }
 
 function wantsOverview(message = '') {
-  const m = String(message).toLowerCase();
+  const m = normalizeLooseText(message);
   return (
     m.includes('overview') ||
     m.includes('what is') ||
@@ -212,7 +250,7 @@ function wantsOverview(message = '') {
 }
 
 function wantsRichApiDescription(message = '') {
-  const m = String(message).toLowerCase();
+  const m = normalizeLooseText(message);
   return (
     m.includes('rich description') ||
     m.includes('detailed description') ||
@@ -225,27 +263,28 @@ function wantsRichApiDescription(message = '') {
 }
 
 function wantsSubApiDesign(message = '') {
-  const m = String(message).toLowerCase();
+  const m = normalizeLooseText(message);
   return (
     m.includes('sub-api') ||
     m.includes('sub api') ||
     m.includes('get operations only') ||
+    m.includes('operation only') ||
     m.includes('read-only api') ||
     m.includes('read only api') ||
     m.includes('derive an api') ||
     m.includes('build an api from') ||
     m.includes('build a sub-api') ||
-    m.includes('sub api with') ||
-    m.includes('propose a sub-api')
+    m.includes('propose a sub-api') ||
+    (m.includes('get /') && m.includes('sub api'))
   );
 }
 
 function wantsSchemas(message = '') {
-  return String(message).toLowerCase().includes('schema');
+  return normalizeLooseText(message).includes('schema');
 }
 
 function wantsEndpoints(message = '') {
-  const m = String(message).toLowerCase();
+  const m = normalizeLooseText(message);
   return (
     m.includes('endpoint') ||
     m.includes('endpoints') ||
@@ -274,10 +313,22 @@ function extractRequestedSchemaName(message = '') {
   return null;
 }
 
+function normalizeEndpointText(endpoint = '') {
+  return String(endpoint)
+    .toUpperCase()
+    .replace('/INSPECTIOS', '/INSPECTIONS')
+    .replace('/INSPECTIO', '/INSPECTION')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function extractRequestedEndpoint(message = '') {
   const text = String(message || '').trim();
   const match = text.match(/(GET|POST|PUT|PATCH|DELETE)\s+\/[A-Za-z0-9/_{}-]+/i);
-  return match ? match[0].toUpperCase() : null;
+
+  if (!match) return null;
+
+  return normalizeEndpointText(match[0]);
 }
 
 function extractOperations(result) {
@@ -325,7 +376,7 @@ function extractSections(answer) {
 }
 
 function normalizeEndpointTitle(endpointTitle = '') {
-  return String(endpointTitle).toUpperCase();
+  return normalizeEndpointText(endpointTitle);
 }
 
 /* --------------------------------------------------

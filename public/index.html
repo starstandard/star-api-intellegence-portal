@@ -21,6 +21,7 @@
     }
 
     * { box-sizing: border-box; }
+
     html, body {
       margin: 0;
       padding: 0;
@@ -29,16 +30,16 @@
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    button, textarea, input {
+    button, textarea, input, select {
       font: inherit;
     }
 
     .app {
-      max-width: 1560px;
+      max-width: 1580px;
       margin: 0 auto;
       padding: 24px;
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 360px 1fr;
       gap: 20px;
       min-height: 100vh;
     }
@@ -92,6 +93,7 @@
       margin: 4px 0 0;
       color: var(--muted);
       font-size: 14px;
+      line-height: 1.35;
     }
 
     .label {
@@ -103,6 +105,17 @@
       letter-spacing: 0.08em;
     }
 
+    .select,
+    .explorer-search {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #0a1126;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
     .audience-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -110,7 +123,8 @@
     }
 
     .audience-btn,
-    .btn {
+    .btn,
+    .schema-tab {
       border: 1px solid var(--line);
       background: var(--panel-2);
       color: var(--text);
@@ -120,7 +134,8 @@
       transition: 0.18s ease;
     }
 
-    .audience-btn.active {
+    .audience-btn.active,
+    .schema-tab.active {
       background: linear-gradient(135deg, rgba(122, 162, 255, 0.22), rgba(149, 179, 255, 0.16));
       border-color: var(--brand);
     }
@@ -141,7 +156,7 @@
 
     textarea {
       width: 100%;
-      min-height: 170px;
+      min-height: 180px;
       resize: vertical;
       border: 0;
       outline: none;
@@ -160,6 +175,7 @@
       display: flex;
       gap: 10px;
       margin-top: 12px;
+      flex-wrap: wrap;
     }
 
     .quick-list {
@@ -380,7 +396,7 @@
 
     .explorer-shell {
       display: grid;
-      grid-template-columns: 420px 1fr;
+      grid-template-columns: 430px 1fr;
       gap: 16px;
     }
 
@@ -401,19 +417,9 @@
       gap: 10px;
     }
 
-    .explorer-search {
-      width: 100%;
-      border: 1px solid var(--line);
-      background: #0a1126;
-      color: var(--text);
-      border-radius: 12px;
-      padding: 10px 12px;
-      outline: none;
-    }
-
     .explorer-scroll {
       overflow: auto;
-      max-height: 680px;
+      max-height: 700px;
     }
 
     .explorer-row {
@@ -444,6 +450,7 @@
       border: 1px solid var(--line);
       background: #101832;
       color: var(--text);
+      margin-right: 8px;
     }
 
     .method-GET { color: #9ff0c0; border-color: rgba(126, 224, 168, 0.35); }
@@ -532,21 +539,6 @@
       flex-wrap: wrap;
     }
 
-    .schema-tab {
-      border: 1px solid var(--line);
-      background: #111938;
-      color: var(--muted);
-      border-radius: 999px;
-      padding: 8px 12px;
-      cursor: pointer;
-    }
-
-    .schema-tab.active {
-      border-color: var(--brand);
-      color: var(--text);
-      background: rgba(122, 162, 255, 0.12);
-    }
-
     .schema-pane {
       display: none;
     }
@@ -596,6 +588,12 @@
         </div>
       </div>
 
+      <label class="label" for="domainSelect">Domain</label>
+      <select id="domainSelect" class="select">
+        <option value="multi-point-inspection">Multi-Point Inspection</option>
+        <option value="appointment">Appointment</option>
+      </select>
+
       <label class="label">Audience</label>
       <div class="audience-grid">
         <button class="audience-btn active" data-audience="business">Business</button>
@@ -615,13 +613,7 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
       </div>
 
       <label class="label">Quick prompts</label>
-      <div class="quick-list">
-        <div class="quick-item">Give me a rich description of the Multi-Point Inspection API</div>
-        <div class="quick-item">Show me the schemas of the Multi-Point Inspection API</div>
-        <div class="quick-item">Explain GET /inspections/{id}/findings for the multi-point-inspection API</div>
-        <div class="quick-item">Show schema Inspection in the multi-point-inspection API</div>
-        <div class="quick-item">I need the GET /inspectios operation only for the sub-API</div>
-      </div>
+      <div class="quick-list" id="quickList"></div>
 
       <label class="label">Explorer</label>
       <div class="actions">
@@ -633,9 +625,10 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
       <div class="topbar">
         <div class="title">
           <h2>Discovery Workspace</h2>
-          <p>OpenAPI + AI + explorer-driven API intelligence</p>
+          <p>Multi-spec OpenAPI + AI + explorer-driven API intelligence</p>
         </div>
         <div class="meta">
+          <div class="pill" id="domainPill">Domain: multi-point-inspection</div>
           <div class="pill" id="audiencePill">Audience: business</div>
           <div class="pill" id="toolPill">Tool: —</div>
           <div class="pill" id="progressivePill">Progressive: false</div>
@@ -725,6 +718,7 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
   </div>
 
   <script>
+    const domainSelect = document.getElementById('domainSelect');
     const promptEl = document.getElementById('prompt');
     const askBtn = document.getElementById('askBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -732,6 +726,7 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
     const explorerSearch = document.getElementById('explorerSearch');
     const explorerList = document.getElementById('explorerList');
     const explorerDetail = document.getElementById('explorerDetail');
+    const quickList = document.getElementById('quickList');
 
     const statusEl = document.getElementById('status');
     const answerEl = document.getElementById('answer');
@@ -745,6 +740,7 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
     const schemasEl = document.getElementById('schemas');
     const workflowEl = document.getElementById('workflow');
 
+    const domainPill = document.getElementById('domainPill');
     const audiencePill = document.getElementById('audiencePill');
     const toolPill = document.getElementById('toolPill');
     const progressivePill = document.getElementById('progressivePill');
@@ -758,8 +754,26 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
     const schemaModalClose = document.getElementById('schemaModalClose');
 
     let currentAudience = 'business';
+    let currentDomain = 'multi-point-inspection';
     let explorerOps = [];
     let selectedExplorerKey = '';
+
+    const QUICK_PROMPTS = {
+      'multi-point-inspection': [
+        'Give me a rich description of the Multi-Point Inspection API',
+        'Show me the schemas of the Multi-Point Inspection API',
+        'Explain GET /inspections/{id}/findings for the multi-point-inspection API',
+        'Show schema Inspection in the multi-point-inspection API',
+        'I need the GET /inspections operation only for the sub-API'
+      ],
+      appointment: [
+        'Give me a rich description of the Appointment API',
+        'Show me the schemas of the Appointment API',
+        'Explain GET /appointments/{id} for the Appointment API',
+        'Show schema Appointment in the Appointment API',
+        'I need the GET /appointments operation only for the sub-API'
+      ]
+    };
 
     function setStatus(message = '', type = '') {
       statusEl.textContent = message;
@@ -872,6 +886,7 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
     }
 
     function applyMeta(data) {
+      domainPill.textContent = `Domain: ${currentDomain}`;
       audiencePill.textContent = `Audience: ${data.audience || currentAudience}`;
       toolPill.textContent = `Tool: ${data.tool_name || '—'}`;
       progressivePill.textContent = `Progressive: ${Boolean(data.progressive)}`;
@@ -898,10 +913,22 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
       document.getElementById('schemaPaneRaw').classList.toggle('active', tab === 'raw');
     }
 
+    function renderQuickPrompts() {
+      const prompts = QUICK_PROMPTS[currentDomain] || [];
+      quickList.innerHTML = prompts.map((text) => `<div class="quick-item">${escapeHtml(text)}</div>`).join('');
+      document.querySelectorAll('.quick-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          promptEl.value = item.textContent.trim();
+          ask();
+        });
+      });
+    }
+
     function openSchemaModalFromData(data) {
       schemaModalTitle.textContent = data.schema_title || data.name || 'Schema';
-      schemaModalSubtitle.textContent = `Source: ${data.source || 'openapi'}`;
+      schemaModalSubtitle.textContent = `Domain: ${data.domain || currentDomain} · Source: ${data.source || 'openapi'}`;
       const sections = data.sections || [];
+
       if (!sections.length) {
         schemaSummarySections.innerHTML = `<div class="empty">No schema summary available.</div>`;
       } else {
@@ -912,53 +939,26 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
           </div>
         `).join('');
       }
+
       schemaRawPre.textContent = data.raw_schema ? prettyJson(data.raw_schema) : 'No raw schema available.';
       setSchemaTab('summary');
       schemaModalBackdrop.classList.add('show');
     }
 
-    async function openSchemaPrompt(prompt) {
-      try {
-        setStatus('Loading schema...', 'loading');
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: prompt,
-            audience: currentAudience
-          })
-        });
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data.error || `Schema request failed with status ${res.status}`);
-        }
-
-        if (!data.raw_schema) {
-          throw new Error('Raw OpenAPI schema is not available for this schema right now.');
-        }
-
-        openSchemaModalFromData(data);
-        setStatus('Schema loaded.', 'ok');
-      } catch (err) {
-        console.error('Schema modal error:', err);
-        setStatus(err.message || 'Unable to load schema.', 'error');
-      }
-    }
-
     async function fetchSchemaDirect(name) {
       try {
         setStatus('Loading schema...', 'loading');
-        const res = await fetch(`/api/openapi-schema?name=${encodeURIComponent(name)}`);
+        const res = await fetch(`/api/openapi-schema?domain=${encodeURIComponent(currentDomain)}&name=${encodeURIComponent(name)}`);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `Schema request failed with status ${res.status}`);
 
         openSchemaModalFromData({
+          domain: data.domain,
           schema_title: data.name,
           sections: [
             {
               title: '1. Direct answer',
-              body: `${data.name} is a schema in the OpenAPI definition.`
+              body: `${data.name} is a schema in the ${data.domain} OpenAPI definition.`
             },
             {
               title: '2. Key schema details',
@@ -1017,24 +1017,31 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
 
         renderCards(relatedSchemasEl, data.related_schema_cards || [], (item) => {
           if (item?.title) fetchSchemaDirect(item.title);
-          else if (item?.prompt) openSchemaPrompt(item.prompt);
         });
 
         renderCards(capabilitiesEl, data.capability_cards || [], (item) => {
-          if (item?.prompt) ask(item.prompt);
+          if (item?.prompt) {
+            promptEl.value = item.prompt;
+            ask(item.prompt);
+          }
         });
 
         renderCards(endpointsEl, data.endpoint_cards || [], (item) => {
-          if (item?.prompt) ask(item.prompt);
+          if (item?.prompt) {
+            promptEl.value = item.prompt;
+            ask(item.prompt);
+          }
         });
 
         renderCards(schemasEl, data.schema_cards || [], (item) => {
           if (item?.title) fetchSchemaDirect(item.title);
-          else if (item?.prompt) openSchemaPrompt(item.prompt);
         });
 
         renderCards(workflowEl, data.workflow_map || [], (item) => {
-          if (item?.prompt) ask(item.prompt);
+          if (item?.prompt) {
+            promptEl.value = item.prompt;
+            ask(item.prompt);
+          }
         });
       } catch (err) {
         console.error('STAR UI error:', err);
@@ -1082,8 +1089,8 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
 
     async function loadExplorer() {
       try {
-        setStatus('Loading OpenAPI Explorer...', 'loading');
-        const res = await fetch('/api/openapi-index');
+        setStatus(`Loading OpenAPI Explorer for ${currentDomain}...`, 'loading');
+        const res = await fetch(`/api/openapi-index?domain=${encodeURIComponent(currentDomain)}`);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `Explorer failed with status ${res.status}`);
 
@@ -1091,7 +1098,7 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
         selectedExplorerKey = '';
         renderExplorerList();
         explorerDetail.innerHTML = `<div class="empty">Select an endpoint to inspect its details.</div>`;
-        setStatus('OpenAPI Explorer loaded.', 'ok');
+        setStatus(`OpenAPI Explorer loaded for ${currentDomain}.`, 'ok');
       } catch (err) {
         console.error(err);
         explorerList.innerHTML = `<div class="empty">${escapeHtml(err.message || 'Unable to load explorer.')}</div>`;
@@ -1103,7 +1110,7 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
     async function loadExplorerEndpoint(method, routePath) {
       try {
         setStatus(`Loading ${method} ${routePath}...`, 'loading');
-        const res = await fetch(`/api/openapi-endpoint?method=${encodeURIComponent(method)}&path=${encodeURIComponent(routePath)}`);
+        const res = await fetch(`/api/openapi-endpoint?domain=${encodeURIComponent(currentDomain)}&method=${encodeURIComponent(method)}&path=${encodeURIComponent(routePath)}`);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `Endpoint detail failed with status ${res.status}`);
 
@@ -1194,18 +1201,34 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
       answerEl.textContent = 'Ask a question to explore the API.';
       toolPill.textContent = 'Tool: —';
       progressivePill.textContent = 'Progressive: false';
+      domainPill.textContent = `Domain: ${currentDomain}`;
       audiencePill.textContent = `Audience: ${currentAudience}`;
       applySourcePill(null);
       resetPanels();
     });
 
     loadExplorerBtn.addEventListener('click', loadExplorer);
-
     explorerSearch.addEventListener('input', renderExplorerList);
 
     promptEl.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         ask();
+      }
+    });
+
+    domainSelect.addEventListener('change', () => {
+      currentDomain = domainSelect.value;
+      domainPill.textContent = `Domain: ${currentDomain}`;
+      renderQuickPrompts();
+      explorerOps = [];
+      selectedExplorerKey = '';
+      explorerList.innerHTML = `<div class="empty">Load the OpenAPI Explorer to browse operations.</div>`;
+      explorerDetail.innerHTML = `<div class="empty">Select an endpoint to inspect its details.</div>`;
+
+      if (currentDomain === 'appointment') {
+        promptEl.placeholder = 'Ask something like:\nExplain GET /appointments/{id} for the Appointment API';
+      } else {
+        promptEl.placeholder = 'Ask something like:\nExplain GET /inspections/{id}/findings for the multi-point-inspection API';
       }
     });
 
@@ -1215,13 +1238,6 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
         btn.classList.add('active');
         currentAudience = btn.dataset.audience;
         audiencePill.textContent = `Audience: ${currentAudience}`;
-      });
-    });
-
-    document.querySelectorAll('.quick-item').forEach((item) => {
-      item.addEventListener('click', () => {
-        promptEl.value = item.textContent.trim();
-        ask();
       });
     });
 
@@ -1239,8 +1255,11 @@ Explain GET /inspections/{id}/findings for the multi-point-inspection API"></tex
       }
     });
 
+    renderQuickPrompts();
     resetPanels();
     applySourcePill(null);
+    domainPill.textContent = `Domain: ${currentDomain}`;
+    audiencePill.textContent = `Audience: ${currentAudience}`;
   </script>
 </body>
 </html>

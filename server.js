@@ -12,7 +12,6 @@ const __dirname = path.dirname(__filename);
 const PORT = Number(process.env.PORT || 3000);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const MODEL = process.env.OPENAI_MODEL || 'gpt-5';
-const OPENAPI_SPEC_PATH = process.env.OPENAPI_SPEC_PATH || '';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -38,52 +37,68 @@ async function withTimeout(promise, ms, label = 'Operation') {
 }
 
 /* --------------------------------------------------
- * OPENAPI LOAD
+ * DOMAIN -> OPENAPI SPEC REGISTRY
  * -------------------------------------------------- */
 
-function resolveCandidateSpecPaths() {
-  const candidates = [
-    OPENAPI_SPEC_PATH,
-    path.join(__dirname, 'openapi.yaml'),
-    path.join(__dirname, 'openapi.yml'),
-    path.join(__dirname, 'openapi_monolith.yaml'),
-    path.join(__dirname, 'openapi_enriched.yaml'),
-    path.join(__dirname, 'schemas', 'openapi.yaml'),
-    path.join(__dirname, 'schemas', 'openapi.yml'),
-    path.join(__dirname, 'schemas', 'openapi_monolith.yaml'),
-    path.join(__dirname, 'schemas', 'openapi_enriched.yaml')
-  ].filter(Boolean);
+const DOMAIN_SPEC_PATHS = {
+  appointment:
+    process.env.APPOINTMENT_OPENAPI_SPEC_PATH || './openapi/appointment-api.yaml',
+  'multi-point-inspection':
+    process.env.MPI_OPENAPI_SPEC_PATH || './openapi/multi-point-inspection-api.yaml'
+};
 
-  return [...new Set(candidates)];
+function loadYamlFile(filePath) {
+  try {
+    const resolved = path.resolve(__dirname, filePath);
+
+    if (!fs.existsSync(resolved)) {
+      return { spec: null, sourcePath: resolved, error: 'File not found' };
+    }
+
+    const raw = fs.readFileSync(resolved, 'utf8');
+    const spec = yaml.load(raw);
+
+    if (!spec || typeof spec !== 'object') {
+      return { spec: null, sourcePath: resolved, error: 'Invalid YAML object' };
+    }
+
+    return { spec, sourcePath: resolved, error: null };
+  } catch (err) {
+    return { spec: null, sourcePath: filePath, error: err.message };
+  }
 }
 
-function loadOpenApiSpec() {
-  for (const candidate of resolveCandidateSpecPaths()) {
-    try {
-      if (!fs.existsSync(candidate)) continue;
-      const raw = fs.readFileSync(candidate, 'utf8');
-      const spec = yaml.load(raw);
-      if (spec && typeof spec === 'object') {
-        console.log(`Loaded OpenAPI spec from ${candidate}`);
-        return { spec, sourcePath: candidate };
-      }
-    } catch (err) {
-      console.warn(`Failed loading OpenAPI from ${candidate}: ${err.message}`);
+function loadOpenApiRegistry() {
+  const registry = {};
+
+  for (const [domain, filePath] of Object.entries(DOMAIN_SPEC_PATHS)) {
+    const loaded = loadYamlFile(filePath);
+    registry[domain] = loaded;
+
+    if (loaded.spec) {
+      console.log(`Loaded OpenAPI spec for ${domain} from ${loaded.sourcePath}`);
+    } else {
+      console.warn(
+        `Failed loading OpenAPI spec for ${domain} from ${loaded.sourcePath}: ${loaded.error}`
+      );
     }
   }
 
-  console.warn('No OpenAPI spec loaded.');
-  return { spec: null, sourcePath: null };
+  return registry;
 }
 
-const OPENAPI_STATE = loadOpenApiSpec();
+const OPENAPI_REGISTRY = loadOpenApiRegistry();
 
-function getOpenApiSpec() {
-  return OPENAPI_STATE.spec;
+function getOpenApiSpec(domain) {
+  return OPENAPI_REGISTRY[domain]?.spec || null;
 }
 
-function getOpenApiSchemaMap() {
-  return getOpenApiSpec()?.components?.schemas || {};
+function getOpenApiSourcePath(domain) {
+  return OPENAPI_REGISTRY[domain]?.sourcePath || null;
+}
+
+function getOpenApiSchemaMap(domain) {
+  return getOpenApiSpec(domain)?.components?.schemas || {};
 }
 
 /* --------------------------------------------------
@@ -294,35 +309,37 @@ function schemaNameFromRef(ref = '') {
   return match?.[1] || null;
 }
 
-function dereferenceSchemaRef(ref) {
+function dereferenceSchemaRef(domain, ref) {
   const name = schemaNameFromRef(ref);
   if (!name) return null;
-  const raw = getOpenApiSchemaMap()[name];
+  const raw = getOpenApiSchemaMap(domain)[name];
   if (!raw) return null;
   return { name, raw };
 }
 
-function buildSampleFromSchema(schema, depth = 0) {
+function buildSampleFromSchema(domain, schema, depth = 0) {
   if (!schema || depth > 4) return null;
 
   if (schema.example !== undefined) return schema.example;
+
   if (schema.$ref) {
-    const deref = dereferenceSchemaRef(schema.$ref);
-    return deref ? buildSampleFromSchema(deref.raw, depth + 1) : null;
+    const deref = dereferenceSchemaRef(domain, schema.$ref);
+    return deref ? buildSampleFromSchema(domain, deref.raw, depth + 1) : null;
   }
+
   if (schema.enum?.length) return schema.enum[0];
 
   if (schema.type === 'object' || schema.properties) {
     const out = {};
     for (const [key, value] of Object.entries(schema.properties || {})) {
-      const sample = buildSampleFromSchema(value, depth + 1);
+      const sample = buildSampleFromSchema(domain, value, depth + 1);
       out[key] = sample !== null ? sample : '<value>';
     }
     return out;
   }
 
   if (schema.type === 'array') {
-    const item = buildSampleFromSchema(schema.items, depth + 1);
+    const item = buildSampleFromSchema(domain, schema.items, depth + 1);
     return [item !== null ? item : '<item>'];
   }
 
@@ -369,8 +386,8 @@ function collectSchemaNamesFromRefs(value, acc = new Set()) {
   return acc;
 }
 
-function getOpenApiOperations() {
-  const spec = getOpenApiSpec();
+function getOpenApiOperations(domain) {
+  const spec = getOpenApiSpec(domain);
   if (!spec?.paths) return [];
 
   const out = [];
@@ -395,55 +412,23 @@ function getOpenApiOperations() {
 }
 
 function getOpenApiOperationsForDomain(domain) {
-  const ops = getOpenApiOperations();
-
-  const keywords = domain === 'appointment'
-    ? ['appointment', 'appointments']
-    : domain === 'multi-point-inspection'
-      ? ['inspection', 'inspections', 'finding', 'recommendation', 'approval', 'mpi']
-      : [];
-
-  if (!keywords.length) return [];
-
-  return ops.filter((op) => {
-    const haystack = [
-      op.path,
-      op.summary,
-      op.description,
-      op.operationId,
-      ...(op.tags || [])
-    ].join(' ').toLowerCase();
-
-    return keywords.some((kw) => haystack.includes(kw));
-  });
+  return getOpenApiOperations(domain);
 }
 
 function getOpenApiSchemasForDomain(domain) {
-  const schemaMap = getOpenApiSchemaMap();
+  const schemaMap = getOpenApiSchemaMap(domain);
   const names = Object.keys(schemaMap);
   if (!names.length) return [];
 
-  const keywords = domain === 'appointment'
-    ? ['appointment', 'requestedservice', 'vehicle', 'party', 'timeslot', 'status']
-    : domain === 'multi-point-inspection'
-      ? ['inspection', 'finding', 'recommendation', 'approval', 'media', 'manifest', 'line', 'status']
-      : [];
-
-  return names
-    .filter((name) => {
-      const schema = schemaMap[name];
-      const haystack = `${name} ${schema?.title || ''} ${schema?.description || ''}`.toLowerCase();
-      return keywords.some((kw) => haystack.includes(kw));
-    })
-    .map((name) => ({
-      name,
-      description: schemaMap[name]?.description || '',
-      raw: schemaMap[name]
-    }));
+  return names.map((name) => ({
+    name,
+    description: schemaMap[name]?.description || '',
+    raw: schemaMap[name]
+  }));
 }
 
-function findOpenApiSchemaByName(schemaName) {
-  const schemaMap = getOpenApiSchemaMap();
+function findOpenApiSchemaByName(domain, schemaName) {
+  const schemaMap = getOpenApiSchemaMap(domain);
   const target = String(schemaName || '').trim().toLowerCase();
   if (!target) return null;
 
@@ -460,8 +445,8 @@ function findOpenApiSchemaByName(schemaName) {
   return null;
 }
 
-function findOpenApiEndpoint(endpointTitle) {
-  const spec = getOpenApiSpec();
+function findOpenApiEndpoint(domain, endpointTitle) {
+  const spec = getOpenApiSpec(domain);
   if (!spec?.paths) return null;
 
   const normalizedTarget = normalizeEndpointTitle(endpointTitle);
@@ -516,16 +501,16 @@ function extractParametersFromOperation(operation, pathItem = {}) {
   return deduped;
 }
 
-function extractRelatedSchemasFromOperation(op) {
+function extractRelatedSchemasFromOperation(domain, op) {
   const found = collectSchemaNamesFromRefs(op, new Set());
   return Array.from(found).map((name) => ({
     title: name,
-    description: getOpenApiSchemaMap()[name]?.description || 'Related OpenAPI schema',
+    description: getOpenApiSchemaMap(domain)[name]?.description || 'Related OpenAPI schema',
     prompt: `Show schema ${name}`
   }));
 }
 
-function extractResponseSchemaCardFromOperation(op) {
+function extractResponseSchemaCardFromOperation(domain, op) {
   const responses = op?.responses || {};
   const preferred = responses['200'] || responses['201'] || responses['202'] || Object.values(responses)[0];
   if (!preferred) return [];
@@ -536,12 +521,12 @@ function extractResponseSchemaCardFromOperation(op) {
   const found = collectSchemaNamesFromRefs(content.schema, new Set());
   return Array.from(found).map((name) => ({
     title: name,
-    description: getOpenApiSchemaMap()[name]?.description || 'Response schema',
+    description: getOpenApiSchemaMap(domain)[name]?.description || 'Response schema',
     prompt: `Show schema ${name}`
   }));
 }
 
-function extractRequestExampleFromOperation(op) {
+function extractRequestExampleFromOperation(domain, op) {
   const content = findPrimaryJsonContent(op?.requestBody?.content);
   if (!content) return null;
 
@@ -551,10 +536,10 @@ function extractRequestExampleFromOperation(op) {
     if (first?.value !== undefined) return first.value;
   }
 
-  return buildSampleFromSchema(content.schema);
+  return buildSampleFromSchema(domain, content.schema);
 }
 
-function extractResponseExampleFromOperation(op) {
+function extractResponseExampleFromOperation(domain, op) {
   const responses = op?.responses || {};
   const preferred = responses['200'] || responses['201'] || responses['202'] || Object.values(responses)[0];
   if (!preferred) return null;
@@ -568,7 +553,7 @@ function extractResponseExampleFromOperation(op) {
     if (first?.value !== undefined) return first.value;
   }
 
-  return buildSampleFromSchema(content.schema);
+  return buildSampleFromSchema(domain, content.schema);
 }
 
 /* --------------------------------------------------
@@ -1009,7 +994,7 @@ Open a schema card to view its OpenAPI structure and related schema relationship
 }
 
 async function buildSchemaDetailResponse(domain, schemaName, audience) {
-  const found = findOpenApiSchemaByName(schemaName);
+  const found = findOpenApiSchemaByName(domain, schemaName);
 
   if (found) {
     const answer = client
@@ -1061,7 +1046,7 @@ Review related schemas and endpoints that reference it.`;
 
     const related = Array.from(collectSchemaNamesFromRefs(found.raw, new Set())).map((name) => ({
       title: name,
-      description: getOpenApiSchemaMap()[name]?.description || 'Related schema',
+      description: getOpenApiSchemaMap(domain)[name]?.description || 'Related schema',
       prompt: `Show schema ${name}`
     }));
 
@@ -1141,19 +1126,19 @@ Select an endpoint to inspect its parameters, examples, schemas, and raw OpenAPI
 }
 
 async function buildEndpointDetailResponse(domain, endpointTitle, audience) {
-  const openApiEndpoint = findOpenApiEndpoint(endpointTitle);
+  const openApiEndpoint = findOpenApiEndpoint(domain, endpointTitle);
   const builtIn = getBuiltInEndpointDetail(domain, endpointTitle);
 
   if (openApiEndpoint) {
     const op = openApiEndpoint.details;
     const parameters = extractParametersFromOperation(op, openApiEndpoint.pathItem);
     const relatedSchemaCards = [
-      ...extractRelatedSchemasFromOperation(op),
-      ...extractResponseSchemaCardFromOperation(op)
+      ...extractRelatedSchemasFromOperation(domain, op),
+      ...extractResponseSchemaCardFromOperation(domain, op)
     ].filter((item, idx, arr) => arr.findIndex((x) => x.title === item.title) === idx);
 
-    const requestExample = extractRequestExampleFromOperation(op);
-    const responseExample = extractResponseExampleFromOperation(op);
+    const requestExample = extractRequestExampleFromOperation(domain, op);
+    const responseExample = extractResponseExampleFromOperation(domain, op);
 
     const answer = client
       ? await (async () => {
@@ -1302,22 +1287,31 @@ Inspect related schemas or try again later.`;
 
 app.get('/api/version', (_req, res) => {
   res.json({
-    version: 'openapi-explorer-routes',
-    has_openapi_index: true,
-    has_openapi_endpoint: true,
-    has_openapi_schema: true,
-    openapi_loaded: Boolean(getOpenApiSpec()),
-    openapi_source: OPENAPI_STATE.sourcePath
+    version: 'multi-spec-registry',
+    domains: Object.fromEntries(
+      Object.keys(DOMAIN_SPEC_PATHS).map((domain) => [
+        domain,
+        {
+          openapi_loaded: Boolean(getOpenApiSpec(domain)),
+          openapi_source: getOpenApiSourcePath(domain)
+        }
+      ])
+    )
   });
 });
 
-app.get('/api/openapi-index', (_req, res) => {
-  const spec = getOpenApiSpec();
-  if (!spec?.paths) {
-    return res.status(404).json({ error: 'OpenAPI spec not loaded.' });
+app.get('/api/openapi-index', (req, res) => {
+  const domain = String(req.query.domain || '').trim();
+  if (!domain) {
+    return res.status(400).json({ error: 'domain is required.' });
   }
 
-  const entries = getOpenApiOperations().map((op) => ({
+  const spec = getOpenApiSpec(domain);
+  if (!spec?.paths) {
+    return res.status(404).json({ error: `OpenAPI spec not loaded for domain: ${domain}` });
+  }
+
+  const entries = getOpenApiOperations(domain).map((op) => ({
     method: op.method,
     path: op.path,
     summary: op.summary,
@@ -1327,33 +1321,36 @@ app.get('/api/openapi-index', (_req, res) => {
   }));
 
   return res.json({
+    domain,
     title: spec.info?.title || 'OpenAPI',
     version: spec.info?.version || '',
-    source_path: OPENAPI_STATE.sourcePath || null,
+    source_path: getOpenApiSourcePath(domain),
     operations: entries
   });
 });
 
 app.get('/api/openapi-endpoint', (req, res) => {
+  const domain = String(req.query.domain || '').trim();
   const method = String(req.query.method || '').toUpperCase();
   const routePath = String(req.query.path || '');
 
-  if (!method || !routePath) {
-    return res.status(400).json({ error: 'method and path are required.' });
+  if (!domain || !method || !routePath) {
+    return res.status(400).json({ error: 'domain, method, and path are required.' });
   }
 
-  const found = findOpenApiEndpoint(`${method} ${routePath}`);
+  const found = findOpenApiEndpoint(domain, `${method} ${routePath}`);
   if (!found) {
-    return res.status(404).json({ error: 'Endpoint not found in OpenAPI.' });
+    return res.status(404).json({ error: `Endpoint not found in OpenAPI for domain: ${domain}` });
   }
 
   const parameters = extractParametersFromOperation(found.details, found.pathItem);
   const relatedSchemas = [
-    ...extractRelatedSchemasFromOperation(found.details),
-    ...extractResponseSchemaCardFromOperation(found.details)
+    ...extractRelatedSchemasFromOperation(domain, found.details),
+    ...extractResponseSchemaCardFromOperation(domain, found.details)
   ].filter((item, idx, arr) => arr.findIndex((x) => x.title === item.title) === idx);
 
   return res.json({
+    domain,
     method: found.method,
     path: found.path,
     summary: found.details.summary || '',
@@ -1362,30 +1359,33 @@ app.get('/api/openapi-endpoint', (req, res) => {
     tags: Array.isArray(found.details.tags) ? found.details.tags : [],
     parameters,
     related_schema_cards: relatedSchemas,
-    request_example: extractRequestExampleFromOperation(found.details),
-    response_example: extractResponseExampleFromOperation(found.details),
+    request_example: extractRequestExampleFromOperation(domain, found.details),
+    response_example: extractResponseExampleFromOperation(domain, found.details),
     raw_openapi: found.details
   });
 });
 
 app.get('/api/openapi-schema', (req, res) => {
+  const domain = String(req.query.domain || '').trim();
   const name = String(req.query.name || '');
-  if (!name) {
-    return res.status(400).json({ error: 'name is required.' });
+
+  if (!domain || !name) {
+    return res.status(400).json({ error: 'domain and name are required.' });
   }
 
-  const found = findOpenApiSchemaByName(name);
+  const found = findOpenApiSchemaByName(domain, name);
   if (!found) {
-    return res.status(404).json({ error: 'Schema not found.' });
+    return res.status(404).json({ error: `Schema not found for domain: ${domain}` });
   }
 
   const related = Array.from(collectSchemaNamesFromRefs(found.raw, new Set())).map((schemaName) => ({
     title: schemaName,
-    description: getOpenApiSchemaMap()[schemaName]?.description || 'Related schema',
+    description: getOpenApiSchemaMap(domain)[schemaName]?.description || 'Related schema',
     prompt: `Show schema ${schemaName}`
   }));
 
   return res.json({
+    domain,
     name: found.name,
     raw_schema: found.raw,
     related_schema_cards: related
@@ -1402,8 +1402,15 @@ app.get('/health', (_req, res) => {
     service: 'star-ai-intelligence-portal',
     model: MODEL,
     has_openai_key: Boolean(OPENAI_API_KEY),
-    has_openapi_spec: Boolean(getOpenApiSpec()),
-    openapi_source: OPENAPI_STATE.sourcePath
+    domains: Object.fromEntries(
+      Object.keys(DOMAIN_SPEC_PATHS).map((domain) => [
+        domain,
+        {
+          openapi_loaded: Boolean(getOpenApiSpec(domain)),
+          openapi_source: getOpenApiSourcePath(domain)
+        }
+      ])
+    )
   });
 });
 
@@ -1549,5 +1556,5 @@ Answer clearly and concisely in the context of STAR automotive APIs.`
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`STAR server running on ${PORT}`);
+  console.log(`STAR multi-spec server running on ${PORT}`);
 });

@@ -40,16 +40,20 @@ async function withTimeout(promise, ms, label = 'Operation') {
  * DOMAIN -> OPENAPI SPEC REGISTRY
  * -------------------------------------------------- */
 
+const ROOT = process.cwd();
+
 const DOMAIN_SPEC_PATHS = {
   appointment:
-    process.env.APPOINTMENT_OPENAPI_SPEC_PATH || './openapi/appointment-api.yaml',
+    process.env.APPOINTMENT_OPENAPI_SPEC_PATH ||
+    path.join(ROOT, 'openapi', 'appointment-api.yaml'),
   'multi-point-inspection':
-    process.env.MPI_OPENAPI_SPEC_PATH || './openapi/multi-point-inspection-api.yaml'
+    process.env.MPI_OPENAPI_SPEC_PATH ||
+    path.join(ROOT, 'openapi', 'multi-point-inspection-api.yaml')
 };
 
 function loadYamlFile(filePath) {
   try {
-    const resolved = path.resolve(__dirname, filePath);
+    const resolved = path.resolve(filePath);
 
     if (!fs.existsSync(resolved)) {
       return { spec: null, sourcePath: resolved, error: 'File not found' };
@@ -506,7 +510,7 @@ function extractRelatedSchemasFromOperation(domain, op) {
   return Array.from(found).map((name) => ({
     title: name,
     description: getOpenApiSchemaMap(domain)[name]?.description || 'Related OpenAPI schema',
-    prompt: `Show schema ${name}`
+    prompt: `Show schema ${name} in the ${domain} API`
   }));
 }
 
@@ -522,7 +526,7 @@ function extractResponseSchemaCardFromOperation(domain, op) {
   return Array.from(found).map((name) => ({
     title: name,
     description: getOpenApiSchemaMap(domain)[name]?.description || 'Response schema',
-    prompt: `Show schema ${name}`
+    prompt: `Show schema ${name} in the ${domain} API`
   }));
 }
 
@@ -557,7 +561,7 @@ function extractResponseExampleFromOperation(domain, op) {
 }
 
 /* --------------------------------------------------
- * BUILT-IN FALLBACKS
+ * FALLBACK CONTENT
  * -------------------------------------------------- */
 
 const DOMAIN_OVERVIEWS = {
@@ -565,53 +569,53 @@ const DOMAIN_OVERVIEWS = {
     business: `1. Direct answer
 The Appointment API represents the dealership service scheduling and intake layer.
 
-2. Core responsibilities
-It manages booking context, requested services, vehicle and customer references, and appointment lifecycle.
+2. Key details
+It supports appointment booking, requested service capture, timing, and service-lane preparation.
 
 3. Useful next steps
-Explore endpoints, schemas, and service-lane workflows.`,
+Explore endpoints, schemas, and workflow relationships.`,
     technical: `1. Direct answer
 The Appointment API is the scheduling and intake domain for dealership service operations.
 
-2. Core responsibilities
-It models appointment resources, requested services, time context, and upstream references.
+2. Key details
+It models appointments, requested services, timing, and related business references.
 
 3. Useful next steps
-Inspect schemas, endpoints, and reference relationships.`,
+Inspect endpoints, payloads, and schema relationships.`,
     architecture: `1. Direct answer
 The Appointment API owns scheduling and pre-intake coordination.
 
-2. Core responsibilities
+2. Key details
 It establishes service context that downstream domains consume.
 
 3. Useful next steps
-Review domain boundaries, handoffs, and integration points.`
+Review boundaries, handoffs, and related domain structures.`
   },
   'multi-point-inspection': {
     business: `1. Direct answer
 The Multi-Point Inspection API supports structured vehicle health checks in the service lane.
 
-2. Core responsibilities
+2. Key details
 It covers inspection lifecycle, findings, recommendations, approvals, and communication flow.
 
 3. Useful next steps
-Explore business capabilities, endpoints, schemas, and workflow stages.`,
+Explore business capabilities, schemas, endpoints, and workflow stages.`,
     technical: `1. Direct answer
 The Multi-Point Inspection API models inspection lifecycle, findings, media, recommendations, and outcomes.
 
-2. Core responsibilities
-It provides the domain structures and operations needed to create, track, review, and complete inspections.
+2. Key details
+It provides the structures and operations needed to create, track, review, and complete inspections.
 
 3. Useful next steps
-Inspect endpoint definitions, schema structures, and related object families.`,
+Inspect endpoints, payloads, and schema relationships.`,
     architecture: `1. Direct answer
 The Multi-Point Inspection API owns structured inspection and recommendation workflow.
 
-2. Core responsibilities
-It bridges inspection observations to advisor and execution decisions.
+2. Key details
+It bridges technician observations to advisor communication and downstream execution decisions.
 
 3. Useful next steps
-Review cross-domain relationships and downstream handoffs.`
+Review domain boundaries, entity relationships, and cross-domain handoffs.`
   }
 };
 
@@ -632,14 +636,29 @@ function getBuiltInCapabilityCards(domain) {
         prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API'
       },
       {
+        title: 'Track inspection progress',
+        description: 'Monitor inspection state, technician progress, and workflow status.',
+        prompt: 'Explain how to track inspection progress in the multi-point-inspection API'
+      },
+      {
         title: 'Review findings and media',
         description: 'Review technician findings, notes, photos, and condition evidence.',
         prompt: 'Explain how to review findings and media in the multi-point-inspection API'
       },
       {
+        title: 'Prepare recommendations',
+        description: 'Turn findings into advisor-ready repair recommendations and next steps.',
+        prompt: 'Explain how to prepare recommendations in the multi-point-inspection API'
+      },
+      {
         title: 'Capture customer approval',
         description: 'Record customer decisions, approvals, and communication outcomes.',
         prompt: 'Explain how customer approval works in the multi-point-inspection API'
+      },
+      {
+        title: 'Close and publish results',
+        description: 'Finalize the inspection and share outcomes with internal teams or the customer.',
+        prompt: 'Explain how to close and publish results in the multi-point-inspection API'
       }
     ];
   }
@@ -655,6 +674,11 @@ function getBuiltInCapabilityCards(domain) {
         title: 'Confirm service needs',
         description: 'Validate requested services, timing, and customer expectations.',
         prompt: 'Explain how a service advisor confirms service needs using the Appointment API'
+      },
+      {
+        title: 'Prepare service lane',
+        description: 'Use appointment data to support dealer operations and intake readiness.',
+        prompt: 'Explain how the Appointment API supports service-lane preparation'
       }
     ];
   }
@@ -668,7 +692,8 @@ function getBuiltInWorkflowMap(domain) {
       { step: 'Start inspection', detail: 'Launch MPI workflow tied to intake or RO context', prompt: 'Explain how to start the inspection workflow in the multi-point-inspection API' },
       { step: 'Capture findings', detail: 'Technician records results, notes, and media', prompt: 'Explain how findings are captured in the multi-point-inspection API' },
       { step: 'Build recommendations', detail: 'Advisor prepares customer-facing repair guidance', prompt: 'Explain how recommendations are built in the multi-point-inspection API' },
-      { step: 'Get approval', detail: 'Customer decisions are captured and tracked', prompt: 'Explain customer approval flow in the multi-point-inspection API' }
+      { step: 'Get approval', detail: 'Customer decisions are captured and tracked', prompt: 'Explain customer approval flow in the multi-point-inspection API' },
+      { step: 'Close inspection', detail: 'Inspection outcomes are finalized and shared', prompt: 'Explain how to close and publish results in the multi-point-inspection API' }
     ];
   }
 
@@ -690,7 +715,8 @@ function getBuiltInSchemaCards(domain) {
       { title: 'Finding', description: 'Represents an inspection finding, condition, or observed result.', prompt: 'Show schema Finding in the multi-point-inspection API' },
       { title: 'Recommendation', description: 'Represents advisor-ready or technician-derived recommended work.', prompt: 'Show schema Recommendation in the multi-point-inspection API' },
       { title: 'Approval', description: 'Captures customer approval or decline decisions.', prompt: 'Show schema Approval in the multi-point-inspection API' },
-      { title: 'InspectionMedia', description: 'Represents photos, videos, or other evidence attached to findings.', prompt: 'Show schema InspectionMedia in the multi-point-inspection API' }
+      { title: 'InspectionMedia', description: 'Represents photos, videos, or other evidence attached to findings.', prompt: 'Show schema InspectionMedia in the multi-point-inspection API' },
+      { title: 'InspectionStatus', description: 'Represents workflow or lifecycle status of an inspection.', prompt: 'Show schema InspectionStatus in the multi-point-inspection API' }
     ];
   }
 
@@ -711,7 +737,9 @@ function getBuiltInEndpointCards(domain) {
       { title: 'GET /inspections', description: 'List or search inspections.', prompt: 'Explain GET /inspections for the multi-point-inspection API' },
       { title: 'POST /inspections', description: 'Create or start an inspection.', prompt: 'Explain POST /inspections for the multi-point-inspection API' },
       { title: 'GET /inspections/{id}', description: 'Retrieve a specific inspection.', prompt: 'Explain GET /inspections/{id} for the multi-point-inspection API' },
-      { title: 'GET /inspections/{id}/findings', description: 'Retrieve findings tied to an inspection.', prompt: 'Explain GET /inspections/{id}/findings for the multi-point-inspection API' }
+      { title: 'GET /inspections/{id}/findings', description: 'Retrieve findings tied to an inspection.', prompt: 'Explain GET /inspections/{id}/findings for the multi-point-inspection API' },
+      { title: 'POST /inspections/{id}/recommendations', description: 'Create or record recommendations for an inspection.', prompt: 'Explain POST /inspections/{id}/recommendations for the multi-point-inspection API' },
+      { title: 'POST /inspections/{id}/approvals', description: 'Capture approval or decline outcomes.', prompt: 'Explain POST /inspections/{id}/approvals for the multi-point-inspection API' }
     ];
   }
 
@@ -753,15 +781,15 @@ It is the primary read path for single-appointment lookup.`
 GET /inspections lists or searches inspection records.
 
 2. Key endpoint details
-This endpoint is useful for retrieving inspection collections, filtering workflow state, and supporting advisor or operational views of inspection activity.
+This endpoint supports collection-level visibility into inspection activity and workflow state.
 
 3. Why it matters
-It gives technical consumers a collection-level entry point into the MPI domain.`,
+It provides a main entry point into the MPI domain.`,
       'GET /INSPECTIONS/{ID}': `1. Direct answer
 GET /inspections/{id} retrieves a specific inspection.
 
 2. Key endpoint details
-This endpoint is used to inspect the full state of a single inspection, including status, relationships, and downstream context.
+This endpoint exposes the state and details of one inspection instance.
 
 3. Why it matters
 It is the most direct technical path for reading a specific MPI entity.`,
@@ -769,10 +797,10 @@ It is the most direct technical path for reading a specific MPI entity.`,
 GET /inspections/{id}/findings retrieves findings for a specific inspection.
 
 2. Key endpoint details
-This endpoint returns the technician-recorded findings associated with the inspection, often including condition results, notes, severity or status, and related media references.
+This endpoint returns technician-recorded findings, condition results, notes, and related evidence.
 
 3. Why it matters
-It is the main read path for inspection results and supports advisor review, customer communication, and recommendation workflows.`
+It is the main read path for inspection results and supports advisor review and customer communication.`
     }
   };
 
@@ -784,8 +812,8 @@ It is the main read path for inspection results and supports advisor review, cus
  * -------------------------------------------------- */
 
 async function buildOverviewResponse(domain, message, audience) {
-  const overviewText = getAudienceOverview(domain, audience);
-  let answer = overviewText;
+  const fallbackAnswer = getAudienceOverview(domain, audience);
+  let answer = fallbackAnswer;
 
   if (client) {
     try {
@@ -797,16 +825,21 @@ Domain: ${domain}
 User request: ${message}
 
 Base overview:
-${overviewText}
+${fallbackAnswer}
 
-Write a concise but rich structured response.`
+Write a short structured response with:
+1. Direct answer
+2. Key details
+3. Useful next steps
+
+Keep it under 120 words.`
         }),
-        9000,
+        18000,
         'OpenAI overview generation'
       );
-      answer = response.output_text || overviewText;
+      answer = response.output_text || fallbackAnswer;
     } catch {
-      answer = overviewText;
+      answer = fallbackAnswer;
     }
   }
 
@@ -833,13 +866,13 @@ Write a concise but rich structured response.`
         }))
       : getBuiltInSchemaCards(domain),
     workflow_map: getBuiltInWorkflowMap(domain),
-    progressive: !ops.length || !schemas.length,
+    progressive: false,
     source: ops.length || schemas.length ? 'openapi' : 'fallback'
   };
 }
 
 async function buildCapabilitiesResponse(domain, audience) {
-  const answer = audience === 'technical'
+  const fallbackAnswer = audience === 'technical'
     ? `1. Direct answer
 Technical capability views for the ${domain} API are shown below.
 
@@ -866,6 +899,40 @@ These capabilities align with dealership workflow and service-lane usage.
 3. Useful next steps
 Select a capability card to explore the domain in more detail.`;
 
+  let answer = fallbackAnswer;
+
+  if (client) {
+    try {
+      const capabilitySummary = getBuiltInCapabilityCards(domain)
+        .map((c) => `- ${c.title}: ${c.description}`)
+        .join('\n');
+
+      const response = await withTimeout(
+        client.responses.create({
+          model: MODEL,
+          input: `Audience: ${audience}
+Domain: ${domain}
+
+Known capability cards:
+${capabilitySummary}
+
+Write a short structured response with:
+1. Direct answer
+2. Key details
+3. Useful next steps
+
+Keep it under 120 words.`
+        }),
+        20000,
+        'OpenAI capability generation'
+      );
+
+      answer = response.output_text || fallbackAnswer;
+    } catch {
+      answer = fallbackAnswer;
+    }
+  }
+
   const ops = getOpenApiOperationsForDomain(domain);
   const schemas = getOpenApiSchemasForDomain(domain);
 
@@ -889,7 +956,7 @@ Select a capability card to explore the domain in more detail.`;
         }))
       : getBuiltInSchemaCards(domain),
     workflow_map: getBuiltInWorkflowMap(domain),
-    progressive: !ops.length || !schemas.length,
+    progressive: false,
     source: ops.length || schemas.length ? 'openapi' : 'fallback'
   };
 }
@@ -898,7 +965,7 @@ async function buildSubApiResponse(domain, message, audience) {
   const ops = getOpenApiOperationsForDomain(domain);
   const getOps = ops.filter((op) => op.method === 'GET');
 
-  let answer = `1. Direct answer
+  const fallbackAnswer = `1. Direct answer
 A focused sub-API can be derived for the ${domain} domain.
 
 2. Proposed resources or endpoints
@@ -913,6 +980,8 @@ Prefer a narrow read-only surface, stable identifiers, and minimal cross-domain 
 5. Suggested next steps
 Select the GET endpoints you want to keep and then trim the schema surface to only what those responses need.`;
 
+  let answer = fallbackAnswer;
+
   if (client) {
     try {
       const response = await withTimeout(
@@ -923,20 +992,27 @@ Domain: ${domain}
 User request: ${message}
 
 Available GET operations:
-${JSON.stringify(getOps.map((op) => ({
-  method: op.method,
-  path: op.path,
-  summary: op.summary,
-  description: op.description
-})), null, 2)}
+${JSON.stringify(
+  getOps.map((op) => ({
+    method: op.method,
+    path: op.path,
+    summary: op.summary,
+    description: op.description
+  })),
+  null,
+  2
+)}
 
-Write a structured sub-API proposal.`
+Write a short structured sub-API proposal.
+Keep it under 180 words.`
         }),
-        12000,
+        20000,
         'OpenAI sub-api generation'
       );
-      answer = response.output_text || answer;
-    } catch {}
+      answer = response.output_text || fallbackAnswer;
+    } catch {
+      answer = fallbackAnswer;
+    }
   }
 
   return {
@@ -988,7 +1064,7 @@ Open a schema card to view its OpenAPI structure and related schema relationship
         }))
       : getBuiltInSchemaCards(domain),
     workflow_map: getBuiltInWorkflowMap(domain),
-    progressive: !schemas.length,
+    progressive: false,
     source: schemas.length ? 'openapi' : 'fallback'
   };
 }
@@ -997,13 +1073,26 @@ async function buildSchemaDetailResponse(domain, schemaName, audience) {
   const found = findOpenApiSchemaByName(domain, schemaName);
 
   if (found) {
-    const answer = client
-      ? await (async () => {
-          try {
-            const response = await withTimeout(
-              client.responses.create({
-                model: MODEL,
-                input: `Audience: ${audience}
+    const fallbackAnswer = `1. Direct answer
+${found.name} is a schema in the ${domain} API.
+
+2. Key schema details
+This schema is available from the OpenAPI definition and can be inspected in raw form.
+
+3. Why it matters
+It represents part of the structural contract of the domain.
+
+4. Useful next steps
+Review related schemas and endpoints that reference it.`;
+
+    let answer = fallbackAnswer;
+
+    if (client) {
+      try {
+        const response = await withTimeout(
+          client.responses.create({
+            model: MODEL,
+            input: `Audience: ${audience}
 Schema name: ${found.name}
 Schema data:
 ${JSON.stringify(found.raw, null, 2)}
@@ -1012,42 +1101,23 @@ Write:
 1. Direct answer
 2. Key schema details
 3. Why it matters
-4. Useful next steps`
-              }),
-              9000,
-              'OpenAI schema detail generation'
-            );
-            return response.output_text;
-          } catch {
-            return `1. Direct answer
-${found.name} is a schema in the ${domain} API.
-
-2. Key schema details
-This schema is available from the OpenAPI definition and can be inspected in raw form.
-
-3. Why it matters
-It represents part of the structural contract of the domain.
-
 4. Useful next steps
-Review related schemas and endpoints that reference it.`;
-          }
-        })()
-      : `1. Direct answer
-${found.name} is a schema in the ${domain} API.
 
-2. Key schema details
-This schema is available from the OpenAPI definition and can be inspected in raw form.
-
-3. Why it matters
-It represents part of the structural contract of the domain.
-
-4. Useful next steps
-Review related schemas and endpoints that reference it.`;
+Keep it under 140 words.`
+          }),
+          18000,
+          'OpenAI schema detail generation'
+        );
+        answer = response.output_text || fallbackAnswer;
+      } catch {
+        answer = fallbackAnswer;
+      }
+    }
 
     const related = Array.from(collectSchemaNamesFromRefs(found.raw, new Set())).map((name) => ({
       title: name,
       description: getOpenApiSchemaMap(domain)[name]?.description || 'Related schema',
-      prompt: `Show schema ${name}`
+      prompt: `Show schema ${name} in the ${domain} API`
     }));
 
     return {
@@ -1120,7 +1190,7 @@ Select an endpoint to inspect its parameters, examples, schemas, and raw OpenAPI
       : getBuiltInEndpointCards(domain),
     schema_cards: getBuiltInSchemaCards(domain),
     workflow_map: getBuiltInWorkflowMap(domain),
-    progressive: !ops.length,
+    progressive: false,
     source: ops.length ? 'openapi' : 'fallback'
   };
 }
@@ -1140,13 +1210,26 @@ async function buildEndpointDetailResponse(domain, endpointTitle, audience) {
     const requestExample = extractRequestExampleFromOperation(domain, op);
     const responseExample = extractResponseExampleFromOperation(domain, op);
 
-    const answer = client
-      ? await (async () => {
-          try {
-            const response = await withTimeout(
-              client.responses.create({
-                model: MODEL,
-                input: `Audience: ${audience}
+    const fallbackAnswer = `1. Direct answer
+${openApiEndpoint.method} ${openApiEndpoint.path} is a defined endpoint in the ${domain} API.
+
+2. Key endpoint details
+${op.summary || op.description || 'This endpoint is part of the domain API surface.'}
+
+3. Why it matters
+This endpoint is relevant to consumers who need direct access to this resource or workflow step.
+
+4. Useful next steps
+Review the parameters, related schemas, examples, and raw OpenAPI definition.`;
+
+    let answer = fallbackAnswer;
+
+    if (client) {
+      try {
+        const response = await withTimeout(
+          client.responses.create({
+            model: MODEL,
+            input: `Audience: ${audience}
 Endpoint: ${openApiEndpoint.method} ${openApiEndpoint.path}
 
 Summary: ${op.summary || ''}
@@ -1158,37 +1241,18 @@ Write:
 1. Direct answer
 2. Key endpoint details
 3. Why it matters
-4. Useful next steps`
-              }),
-              9000,
-              'OpenAI endpoint detail generation'
-            );
-            return response.output_text;
-          } catch {
-            return `1. Direct answer
-${openApiEndpoint.method} ${openApiEndpoint.path} is a defined endpoint in the ${domain} API.
-
-2. Key endpoint details
-${op.summary || op.description || 'This endpoint is part of the domain API surface.'}
-
-3. Why it matters
-This endpoint is relevant to consumers who need direct access to this resource or workflow step.
-
 4. Useful next steps
-Review the parameters, related schemas, examples, and raw OpenAPI definition.`;
-          }
-        })()
-      : `1. Direct answer
-${openApiEndpoint.method} ${openApiEndpoint.path} is a defined endpoint in the ${domain} API.
 
-2. Key endpoint details
-${op.summary || op.description || 'This endpoint is part of the domain API surface.'}
-
-3. Why it matters
-This endpoint is relevant to consumers who need direct access to this resource or workflow step.
-
-4. Useful next steps
-Review the parameters, related schemas, examples, and raw OpenAPI definition.`;
+Keep it under 140 words.`
+          }),
+          18000,
+          'OpenAI endpoint detail generation'
+        );
+        answer = response.output_text || fallbackAnswer;
+      } catch {
+        answer = fallbackAnswer;
+      }
+    }
 
     return {
       answer,
@@ -1282,12 +1346,12 @@ Inspect related schemas or try again later.`;
 }
 
 /* --------------------------------------------------
- * OPENAPI EXPLORER ROUTES
+ * EXPLORER ROUTES
  * -------------------------------------------------- */
 
 app.get('/api/version', (_req, res) => {
   res.json({
-    version: 'multi-spec-registry',
+    version: 'multi-spec-registry-demo-safe',
     domains: Object.fromEntries(
       Object.keys(DOMAIN_SPEC_PATHS).map((domain) => [
         domain,
@@ -1381,7 +1445,7 @@ app.get('/api/openapi-schema', (req, res) => {
   const related = Array.from(collectSchemaNamesFromRefs(found.raw, new Set())).map((schemaName) => ({
     title: schemaName,
     description: getOpenApiSchemaMap(domain)[schemaName]?.description || 'Related schema',
-    prompt: `Show schema ${schemaName}`
+    prompt: `Show schema ${schemaName} in the ${domain} API`
   }));
 
   return res.json({
@@ -1393,7 +1457,7 @@ app.get('/api/openapi-schema', (req, res) => {
 });
 
 /* --------------------------------------------------
- * MAIN APP ROUTES
+ * HEALTH / ROOT
  * -------------------------------------------------- */
 
 app.get('/health', (_req, res) => {
@@ -1422,6 +1486,10 @@ app.get('/', (_req, res) => {
     chat: '/api/chat'
   });
 });
+
+/* --------------------------------------------------
+ * MAIN CHAT ROUTE
+ * -------------------------------------------------- */
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -1506,9 +1574,10 @@ app.post('/api/chat', async (req, res) => {
           input: `Audience: ${audience}
 User request: ${message}
 
-Answer clearly and concisely in the context of STAR automotive APIs.`
+Answer clearly and concisely in the context of STAR automotive APIs.
+Keep it under 140 words.`
         }),
-        12000,
+        18000,
         'OpenAI answer generation'
       );
 
@@ -1556,5 +1625,5 @@ Answer clearly and concisely in the context of STAR automotive APIs.`
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`STAR multi-spec server running on ${PORT}`);
+  console.log(`STAR multi-spec demo-safe server running on ${PORT}`);
 });

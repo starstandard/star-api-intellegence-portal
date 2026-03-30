@@ -1,0 +1,1951 @@
+openapi: 3.0.3
+info:
+  title: Service Scheduling - Monolith
+  version: 1.1.0
+  description: 'Scheduling - Appointment aggregate (AR), commands (write models),
+    read model, and shared reference/value schemas. Naming: PascalCase schemas, lower_snake_case
+    properties, UPPER_SNAKE_CASE enums.'
+paths:
+  /appointments:
+    get:
+      summary: Retrieve a list of Appointment entities.
+      operationId: listAppointment
+      parameters:
+      - name: dealer_key
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Pagination cursor (opaque).
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+        description: Max results to return.
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: vin
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: appointment_status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - HELD
+          - BOOKED
+          - MODIFIED
+          - CANCELLED
+          - COMPLETED
+          - NO_SHOW
+      responses:
+        '200':
+          description: List of Appointment entities.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentListResponse'
+    post:
+      summary: Create a new Appointment entity.
+      operationId: createAppointmentEntity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentCreate'
+      responses:
+        '201':
+          description: Created appointment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+  /appointments/capabilities:
+    get:
+      summary: Discover Appointment Capabilities
+      operationId: getAppointmentCapabilities
+      responses:
+        '200':
+          description: Capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+  /appointments/batch:
+    post:
+      summary: Bulk create appointments
+      operationId: createAppointmentBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - data
+              properties:
+                data:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/AppointmentCreate'
+      responses:
+        '202':
+          description: Batch accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_key:
+                    type: string
+  /appointments/exports:
+    post:
+      summary: Initiate a bulk Appointment export
+      operationId: initiateAppointmentExport
+      responses:
+        '202':
+          description: Export initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  export_id:
+                    type: string
+  /appointments/exports/{exportId}:
+    get:
+      summary: Get export status
+      operationId: getAppointmentExportStatus
+      parameters:
+      - name: exportId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Export status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  download_url:
+                    type: string
+  /appointments/{appointment_key}:
+    get:
+      summary: Retrieve a specific Appointment entity.
+      operationId: getAppointmentById
+      parameters:
+      - name: appointment_key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Appointment entity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+    put:
+      summary: Replace an Appointment entity.
+      operationId: replaceAppointment
+      parameters:
+      - name: appointment_key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentUpdate'
+      responses:
+        '200':
+          description: Replaced.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+    patch:
+      summary: Partially update an Appointment entity.
+      operationId: updatePartialAppointment
+      parameters:
+      - name: appointment_key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentUpdate'
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+    delete:
+      summary: Delete an Appointment entity
+      operationId: deleteAppointmentEntity
+      parameters:
+      - name: appointment_key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Deleted
+  /appointments/{appointment_key}/commands:
+    post:
+      summary: Execute a business workflow on Appointment
+      operationId: executeAppointmentCommand
+      parameters:
+      - name: appointment_key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command_type:
+                  type: string
+                  enum:
+                  - CANCEL
+                  - RESCHEDULE
+                  - CONFIRM
+                payload:
+                  type: object
+              required:
+              - command_type
+      responses:
+        '202':
+          description: Command accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  command_id:
+                    type: string
+                  status:
+                    type: string
+  /appointments/{appointment_key}/commands/{commandId}:
+    get:
+      summary: Poll Appointment command status
+      operationId: getAppointmentCommandStatus
+      parameters:
+      - name: appointment_key
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: commandId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Command status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  command_id:
+                    type: string
+                  status:
+                    type: string
+                  result:
+                    type: object
+  /appointments/{appointment_key}/event-messages:
+    get:
+      summary: Retrieve a list of EventMessage entities scoped by appointment_key.
+      operationId: listEventMessageByAppointmentKey
+      parameters:
+      - name: appointment_key
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Event messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - has_more
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventMessage'
+                  next_cursor:
+                    type: string
+                  has_more:
+                    type: boolean
+                    example: false
+                  total_count:
+                    type: integer
+components:
+  schemas:
+    AppointmentCustomerSnapshot:
+      type: object
+      description: Booking-time customer snapshot stored inside Appointment. Not a
+        Customer master record.
+      required:
+      - name
+      - contact_method
+      properties:
+        identifier:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identifier'
+        name:
+          $ref: '#/components/schemas/Name'
+        address:
+          $ref: '#/components/schemas/AddressReferences'
+        contact_method:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactMethod'
+        email_declined:
+          type: boolean
+        phone_declined:
+          type: boolean
+          description: Legacy field (present in your examples); keep for compatibility.
+        communication:
+          type: array
+          items:
+            $ref: '#/components/schemas/Communication'
+    AppointmentAdvisorRef:
+      type: object
+      description: Advisor reference (Dealer Ops context).
+      properties:
+        advisor_id:
+          type: string
+          example: SA265FG8
+        name:
+          type: string
+        job_title:
+          type: string
+        email:
+          type: string
+        image_url:
+          type: string
+    AppointmentTransportSelection:
+      type: object
+      description: Transportation selection for the appointment.
+      required:
+      - code
+      - name
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        comments:
+          type: string
+        preferences:
+          $ref: '#/components/schemas/Preferences'
+    AppointmentAudit:
+      type: object
+      description: Audit metadata owned by Scheduling context.
+      required:
+      - created_at
+      properties:
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        source_channel:
+          type: string
+          description: e.g. web, mobile, callcenter, service-lane
+        last_request_id:
+          type: string
+          format: uuid
+    AppointmentView:
+      type: object
+      description: Read model projection of the Appointment aggregate.
+      required:
+      - appointment_key
+      - appointment_id
+      - dealer_id
+      - appointment_type
+      - appointment_status
+      - scheduled_start
+      - scheduled_end
+      properties:
+        appointment_id:
+          type: string
+        dealer_id:
+          type: string
+        appointment_type:
+          type: string
+          enum:
+          - SERVICE
+          - TESTDRIVE
+          - DELIVERY
+          - TRADE
+        appointment_status:
+          type: string
+          enum:
+          - HELD
+          - BOOKED
+          - MODIFIED
+          - CANCELLED
+          - COMPLETED
+          - NO_SHOW
+        scheduled_start:
+          type: string
+          format: date-time
+        scheduled_end:
+          type: string
+          format: date-time
+        additional_comments:
+          type: string
+        customer:
+          $ref: '#/components/schemas/AppointmentCustomerSnapshot'
+        vehicle:
+          $ref: '#/components/schemas/VehicleIdentifier'
+        advisor:
+          $ref: '#/components/schemas/AppointmentAdvisorRef'
+        transport:
+          $ref: '#/components/schemas/AppointmentTransportSelection'
+        pick_up_address:
+          $ref: '#/components/schemas/AddressReference'
+        drop_off_address:
+          $ref: '#/components/schemas/AddressReference'
+        audit:
+          $ref: '#/components/schemas/AppointmentAudit'
+        dealer_key:
+          type: string
+          description: Dealer natural key (Dealer context).
+        dealer_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Dealer party reference.
+        customer_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Customer party reference.
+        advisor_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Advisor party reference.
+        party_key:
+          type: string
+          description: 'Convenience: customer party_key.'
+        labor_operation_selections:
+          type: array
+          description: Selected labor operations (write-model selection projection).
+          items:
+            $ref: '#/components/schemas/AppointmentLaborOperationSelection'
+        appointment_key:
+          type: string
+    Name:
+      type: object
+      required:
+      - first_name
+      - last_name
+      properties:
+        first_name:
+          type: string
+          description: Customer first name.
+          example: John
+        last_name:
+          type: string
+          description: Customer last name.
+          example: Doe
+        prefix:
+          type: array
+          description: Name prefixes (optional).
+          items:
+            type: string
+          example:
+          - Mr.
+        suffix:
+          type: array
+          description: Name suffixes (optional).
+          items:
+            type: string
+          example:
+          - PhD
+    ContactMethod:
+      type: object
+      required:
+      - contact_type
+      - contact_use
+      - value
+      properties:
+        contact_type:
+          type: string
+          description: Type of contact method.
+          enum:
+          - PHONE
+          - EMAIL
+          - MAIL
+          - PAGER
+          - URL
+          - SMS
+          - OTHER
+        value:
+          type: string
+          description: Actual contact method details
+        contact_use:
+          type: string
+          description: Purpose of contact method.
+          enum:
+          - HOME
+          - WORK
+          - MOBILE
+          - OTHER
+        rank:
+          type: integer
+          description: Preferred order of use (1 = highest)
+          example: 1
+        preferred_contact_time:
+          type: string
+          description: Preferred contact time window.
+          example: Mon-Fri between 2 PM and 8 PM
+        consent:
+          type: boolean
+          description: Customer consent for being contacted using this method
+    Communication:
+      type: object
+      required:
+      - language
+      properties:
+        language:
+          type: string
+          description: Language to communicate with the customer.
+          example: English
+        preferred:
+          type: boolean
+          description: Language preference indicator
+    Identifier:
+      type: object
+      required:
+      - value
+      properties:
+        value:
+          type: string
+          description: Unique identifier value within the system
+          example: '12345'
+        system:
+          type: string
+          description: Identifier namespace
+          example: CDK
+    Preferences:
+      type: object
+      properties:
+        is_valet_required:
+          type: boolean
+          description: Valet required.
+          example: false
+        is_loaner_required:
+          type: boolean
+          description: Loaner required.
+          example: false
+        is_pick_up_required:
+          type: boolean
+          description: Pick up required.
+          example: false
+        is_drop_off_required:
+          type: boolean
+          description: Drop off required.
+          example: false
+        reminders:
+          type: string
+          description: Reminder preference.
+          enum:
+          - TEXT
+          - EMAIL
+          example: TEXT
+    Capabilities:
+      type: object
+      properties:
+        aggregate:
+          type: string
+          example: CreditAuthorization
+        version:
+          type: string
+          example: 1.2.0
+        current_state:
+          type: string
+          description: The state used to filter these capabilities
+          example: PENDING_APPROVAL
+        transitions:
+          type: array
+          items:
+            type: object
+            properties:
+              action:
+                type: string
+                example: APPROVE_INVOICE
+              from_states:
+                type: array
+                example:
+                - PENDING_APPROVAL
+                items:
+                  type: string
+              to_state:
+                type: string
+                example: ISSUED
+              required_roles:
+                type: array
+                description: Roles authorized to trigger this transition
+                example:
+                - MANAGER
+                - FINANCE_VP
+                items:
+                  type: string
+              links:
+                type: object
+                properties:
+                  execute:
+                    type: string
+                    description: The relative or absolute URL to POST the command
+                      to
+                    example: /credit-authorizations/{key}/commands/approve
+                  method:
+                    type: string
+                    example: POST
+                    enum:
+                    - POST
+                    - PUT
+                    - PATCH
+                  schema_ref:
+                    type: string
+                    description: Reference to the input payload schema for this action
+                    example: '#/components/schemas/CreditAuthorizationCommand'
+                description: HATEOAS-style links to execute the transition or fetch
+                  related metadata
+              _self:
+                type: string
+                description: Link to the specific transition documentation or detail
+                example: /metadata/capabilities/CreditAuthorization/transitions/approve
+              instructions:
+                type: array
+                description: Step-by-step checklist the agent must verify before execution
+                example:
+                - Verify credit limit is sufficient
+                - Confirm tax jurisdiction matches customer address
+                - Ensure currency matches original purchase order
+                items:
+                  type: string
+              parameters_ref:
+                type: string
+                example: '#/components/schemas/CreditAuthorization'
+        available_exports:
+          type: array
+          items:
+            type: object
+            properties:
+              data_contract_key:
+                type: string
+                example: customer_contact_v1
+              description:
+                type: string
+                example: Optimized view containing only non-sensitive contact details.
+              supported_formats:
+                type: array
+                example:
+                - PARQUET
+                - CSV
+                items:
+                  type: string
+                  enum:
+                  - XML
+                  - JSON
+                  - AVRO
+                  - PARQUET
+                  - CSV
+                default: PARQUET
+              columns:
+                type: array
+                example:
+                - first_name
+                - last_name
+                - email
+                items:
+                  type: string
+              retention_policy:
+                type: object
+                properties:
+                  retention_period:
+                    type: string
+                    description: ISO-8601 duration the file remains available for
+                      download
+                    example: P7D
+                  is_pii_sensitive:
+                    type: boolean
+                    description: Indicates export contains PII
+                    example: false
+                  access_tier:
+                    type: string
+                    description: The security clearance required for this contract
+                    example: INTERNAL
+                    enum:
+                    - PUBLIC
+                    - INTERNAL
+                    - RESTRICTED
+                    - CONFIDENTIAL
+              constraints:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    rule_id:
+                      type: string
+                      description: Unique identifier for the business rule
+                      readOnly: true
+                      example: IDENTITY_LOCK_STATE
+                    constraint_type:
+                      type: string
+                      enum:
+                      - RANGE_LIMIT
+                      - SIZE_LIMIT
+                      - FORMAT_INCOMPATIBILITY
+                      - PATTERN_MISMATCH
+                      - PERMISSION_LOCK
+                      - MANDATORY_MISSING
+                      - STATE_TRANSITION_ERROR
+                      - IMMUTABILITY_VIOLATION
+                      - RELATIONAL_DEPENDENCY
+                      - CONFLICT_DETECTION
+                      - AGGREGATE_LIMIT
+                      - ORPHAN_PREVENTION
+                    target_fields:
+                      type: array
+                      description: The specific fields or attributes this constraint
+                        applies to
+                      example:
+                      - first_name
+                      - last_name
+                      - ssn
+                      items:
+                        type: string
+                    rule_context:
+                      type: object
+                      additionalProperties:
+                        type: string
+                      description: Key-value pairs representing the 'facts' of the
+                        current state
+                      example:
+                        item_type: Inventory
+                        limit: '0'
+                        count: '45'
+                    rule_constraints:
+                      type: object
+                      additionalProperties:
+                        type: string
+                      description: Key-value pairs for simple UI-driven validation
+                        (e.g., min, max, unit). Use this for 'Fast Path' client-side
+                        checks.
+                      example:
+                        min: '1'
+                        unit: days
+                        value: '31'
+                    limit_rule:
+                      type: string
+                      description: A Prolog-based predicate defining the valid boundary
+                        for this constraint.
+                      example: allow_export(Format, Days) :- Format == 'parquet',
+                        Days =< 31; Format == 'csv', Days =< 90.
+                    estimated_size:
+                      type: string
+                      description: approximate size of
+                      example: 10gig
+                    estimated_time_min:
+                      type: string
+                      description: approximate amount of minutes to run
+                      example: '12.3'
+                    complexity:
+                      type: string
+                      description: complexity score 1-100
+                      example: '34'
+                    mitigation_hint:
+                      type: string
+                      description: Conflict Resolution Hints
+                      example: To resolve this PERMISSION_LOCK, you must first call
+                        the /unlock endpoint.
+                    message:
+                      type: string
+                      description: Human-readable explanation for UI/Logs
+                      example: Identity fields cannot be modified while in PENDING_APPROVAL
+                        state.
+                    severity:
+                      type: string
+                      enum:
+                      - ERROR
+                      - WARNING
+                    link:
+                      type: string
+                      description: Link to documentation regarding this rule
+                      format: uri
+        documentation_ref:
+          type: string
+          description: Link to full business documentation for this aggregate
+          format: uri
+          example: /documentation/credit-authorizations
+    Codes:
+      type: array
+      items:
+        type: string
+    DaysOfWeekTypes:
+      type: string
+      description: types of days of weeks.
+      enum:
+      - SUN
+      - MON
+      - TUES
+      - WED
+      - THURS
+      - FRI
+      - SAT
+    DurationUOMTypes:
+      type: string
+      description: types of duration u o ms.
+      enum:
+      - MINUTES
+      - HOURS
+      - DAYS
+      - DAY_OF_MONTH
+      - WEEKS
+      - BI_WEEKS
+      - SEMI_MONTHS
+      - MONTHS
+      - QUARTERS
+      - SEMI_YEARS
+      - YEARS
+      - MULTI_YEARS
+      - CUSTOM
+      - OCCURRENCE
+      - UNLIMITED
+      - NONE
+      - OTHER
+    EffectivePeriod:
+      type: object
+      properties:
+        effective_period_key:
+          type: string
+          description: Unique key identifying the effective per...
+          example: ' f17924cc'
+        active_indicator:
+          type: boolean
+          description: Indicator if the period is currently act...
+          example: true
+        exclusive_indicator:
+          type: boolean
+          description: Indicator if the period is exclusive
+          example: true
+        start_date_time:
+          type: string
+          description: Start date and time of the effective per...
+          format: date-time
+          example: 2026-01-14 12:00:00+00:00
+        complete_date_time:
+          type: string
+          description: Completion date and time of the effectiv...
+          format: date-time
+          example: 2026-01-14 12:00:00+00:00
+        duration_uom_type:
+          $ref: '#/components/schemas/DurationUOMTypes'
+        duration_value:
+          type: string
+          description: Value of the duration
+          example: ' 825a63ca'
+        recur_uom_type:
+          $ref: '#/components/schemas/DurationUOMTypes'
+        recur_count:
+          type: string
+          description: Count of recurrence
+          example: ' 67c37c4b'
+        recur_values:
+          $ref: '#/components/schemas/Codes'
+        recur_criteria:
+          type: string
+          description: Criteria defining recurrence
+          example: ' 5321e421'
+        recur_indicator:
+          type: boolean
+          description: Indicator if recurrence is enabled
+          example: true
+        timeslot:
+          $ref: '#/components/schemas/TimeSlot'
+      description: effective.period.desc
+    Money:
+      type: object
+      properties:
+        money_key:
+          type: string
+          description: The unique key for the monetary value.
+          example: ' 29cddea0'
+        money_id:
+          type: string
+          description: The unique ID for the monetary value.
+          readOnly: true
+          example: ' 3eaa845c'
+        currency_code:
+          type: string
+          description: ISO currency code, e.g., 'USD'.
+          example: ' 686231e6'
+        display_value:
+          type: string
+          description: The locale-specific display format for t...
+          example: ' fc2d30c0'
+        locale:
+          type: string
+          description: The locale code (e.g., en-US, fr-FR).
+          example: ' 87a546cd'
+        value:
+          type: string
+          description: The monetary value.
+          example: ' 535243af'
+      description: money.desc
+    PartyReference:
+      type: object
+      properties:
+        party_reference_id:
+          type: string
+          description: Unique identifier value
+          readOnly: true
+          example: ' 33a7886f'
+        party_reference_key:
+          type: string
+          description: Unique identifier value
+          example: ' d3bc6bc2'
+        party_key:
+          type: string
+          description: Unique identifier value
+          example: ' 94d293d4'
+        party_reference_type:
+          type: string
+          description: Unique identifier value
+          example: ' 8f83ec90'
+        context:
+          type: string
+          description: Context or domain of the identifier
+          example: ' 82d4436c'
+        party_relationship_types:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          items:
+            $ref: '#/components/schemas/PartyRelationshipTypes'
+        system_codes:
+          $ref: '#/components/schemas/Codes'
+        rule_codes:
+          $ref: '#/components/schemas/Codes'
+        party:
+          $ref: '#/components/schemas/Identifier'
+        occurrence_date_time:
+          type: string
+          description: The date and time the event occurred.
+          format: date-time
+          example: '2026-01-14T12:00:00Z'
+        duration:
+          $ref: '#/components/schemas/EffectivePeriod'
+      description: party.reference.desc
+    PartyRelationshipTypes:
+      type: string
+      description: types of party relationships.
+      enum:
+      - CORPORATION
+      - GROUP
+      - STORE
+      - BRANCH
+      - DEPARTMENT
+      - SECTION
+      - TEAM
+      - DEALERSHIP
+      - THIRD_PARTY
+      - VENDOR
+      - SUPPLIER
+      - PARTNER_ORGANIZATION
+      - AFFILIATE
+      - DISTRIBUTOR
+      - MANUFACTURER
+      - SERVICE_PROVIDER
+      - EMPLOYER
+      - INTERNAL_ORGANIZATION
+      - COST_CENTER
+      - FREIGHT_FORWARDER
+      - BUYER
+      - REGULATOR
+      - GOVERNMENT_AGENCY
+      - NON_PROFIT
+      - FRANCHISE
+      - SUBSIDIARY
+      - DIVISION
+      - JOINT_VENTURE
+      - AUDITOR
+      - ACTOR
+      - ACCOUNTABLE
+      - RESPONSIBLE
+      - CONSULT
+      - NOTIFY
+      - EXECUTE
+      - PART_OF
+      - MEMBERSHIP
+      - COMPOSED_IN
+      - CUSTOMER
+      - CO_SIGNER
+      - SPOUSE
+      - PARENT
+      - CHILD
+      - SIBLING
+      - LEGAL_GUARDIAN
+      - DEPENDENT
+      - EMERGENCY_CONTACT
+      - FAMILY_MEMBER
+      - FRIEND
+      - ACQUAINTANCE
+      - ASSOCIATE
+      - EX_SPOUSE
+      - PROFESSIONAL_CONTACT
+      - MANAGER
+      - CO_WORKER
+      - FINANCIAL_ADVISOR
+      - SELF
+      - ROMANTIC_PARTNER
+      - OTHER_FAMILY
+      - CAREGIVER
+      - MENTOR
+      - MENTEE
+      - HEIR
+      - TRUSTEE_PERSON
+      - REFERENCE_PERSONAL
+      - REFERENCE_PROFESSIONAL
+      - AGENT
+      - BENEFICIARY
+      - GUARANTOR
+      - EMPLOYEE
+      - CONTRACTOR
+      - OWNER
+      - BUSINESS_PARTNER
+      - SERVICE_CONSUMER
+      - POLITICAL_AFFILIATE
+      - ADVISOR_CONSULTANT
+      - PROXY
+      - SHAREHOLDER
+      - INVESTOR
+      - CUSTODIAN
+      - SOLD_TO
+      - SHIP_TO
+      - PAYER
+      - PAYEE
+      - GIFT_TO
+      - LOAN_PROVIDER
+      - CREDIT_CARD_PROVIDER
+      - LESSEE
+      - LESSOR
+      - INSURED
+      - INSURER
+      - UNDERWRITER
+      - RECIPIENT
+      - TRANSACTION_FROM
+      - TRANSACTION_TO
+      - REMOVE
+      - OTHER
+    RoleTypes:
+      type: string
+      description: types of roles.
+      enum:
+      - GEN_MGR
+      - CLOSING_MGR
+      - FI_MGR
+      - SALES_MGR
+      - SALES_ASSOC
+      - BUSINESS_DEVELOPMENT
+      - FINANCE
+      - CONCIERGE_STAFF
+      - CONCIERGE_MGR
+      - VALET
+      - VALET_OPERATOR
+      - SERVICE_MGR
+      - SERVICE_TECH
+      - STAFF
+      - SPECIALIST
+      - ADVISOR
+      - DISPATCHER
+      - PRIMARY_TECHNICIAN
+      - HELPER_TECHNICIAN
+      - SERVICE_ADVISOR
+      - VALET_DRIVER
+      - MOBILE_DISPATCHER
+      - QUALITY_CONTROL
+      - INSPECTOR
+      - TECHNICIAN
+      - MOBILE_SERVICE_VAN
+      - TOW_TRUCK
+      - AUTONOMOUS_SYSTEM
+      - SUBLET_VENDOR
+    TimeSlot:
+      type: object
+      properties:
+        time_slot_id:
+          type: string
+          description: Unique identifier for the time slot reco...
+          readOnly: true
+          example: ' 5f845181'
+        time_slot_key:
+          type: string
+          description: Unique business key for the time slot.
+          example: ' 3061392a'
+        time_slot_source:
+          type: string
+          description: Unique identifier for the time slot sour...
+          example: GOOGLE_CALENDAR
+        end_day:
+          $ref: '#/components/schemas/DaysOfWeekTypes'
+        end_time:
+          type: string
+          description: End time in HH:mm format.
+          format: date-time
+          example: 2026-01-14 12:00:00+00:00
+        recurring_indicator:
+          type: boolean
+          description: Indicates if the time slot is recurring.
+          example: true
+        recurring_period:
+          $ref: '#/components/schemas/EffectivePeriod'
+        start_day:
+          $ref: '#/components/schemas/DaysOfWeekTypes'
+        start_time:
+          type: string
+          description: Start time in HH:mm format.
+          format: date-time
+          example: 2026-01-14 12:00:00+00:00
+        timeslot_directive_types:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeslotDirectiveTypes'
+        week_of_date:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          format: date
+          items:
+            type: string
+      description: time.slot.desc
+    TimeslotDirectiveTypes:
+      type: string
+      description: types of timeslot directives.
+      enum:
+      - AFTER
+      - ANYTIME
+      - BEFORE
+      - BETWEEN
+      - BLOCK
+      - UNKNOWN
+    Memo:
+      type: array
+      items:
+        type: string
+    LaborOperationReference:
+      type: object
+      description: Reference to a LaborOperation aggregate in the Labor Operations
+        bounded context.
+      required:
+      - labor_operation_key
+      properties:
+        labor_operation_key:
+          type: string
+          description: Business key for the labor operation.
+          example: d3b1f2b9
+        labor_operation_codes:
+          $ref: '#/components/schemas/Codes'
+        labor_operation_description:
+          type: string
+          description: Human-readable description for display.
+          example: 5k Miles Service.
+        href:
+          type: string
+          format: href
+          description: Optional canonical URL to the labor operation resource.
+          example: /labor-operations/d3b1f2b9
+    AppointmentLaborOperationSelection:
+      type: object
+      description: Selected labor operation(s) for a service appointment. This bridges
+        Scheduling to the Labor Operations bounded context.
+      required:
+      - labor_operation_reference
+      properties:
+        labor_operation_reference:
+          $ref: '#/components/schemas/LaborOperationReference'
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+          description: How many times this labor operation should be performed (if
+            applicable).
+        customer_comments:
+          type: string
+          description: Customer comments specific to this selected operation.
+        complaint_text:
+          type: string
+          description: Optional complaint text captured at booking time (may be mirrored
+            into LaborOperation.complaint_text downstream).
+        estimated_labor_units:
+          type: string
+          description: Optional booking-time estimate. Use LaborOperation.flat_rate_units
+            as source of truth once created.
+        estimated_labor_hours:
+          type: number
+          format: double
+          description: Optional booking-time estimate. Use LaborOperation-derived
+            measures as source of truth once created.
+        estimated_amount:
+          $ref: '#/components/schemas/Money'
+        legacy_op_code_id:
+          type: string
+          description: Legacy opCodeID for transitional mapping (optional).
+          example: 01TOZMAT
+    AppointmentCreate:
+      type: object
+      description: Create Appointment (aligned to model naming).
+      required:
+      - dealer_id
+      - appointment_type
+      - scheduled_start
+      - customer
+      properties:
+        dealer_id:
+          type: string
+        appointment_type:
+          type: string
+          enum:
+          - SERVICE
+          - TESTDRIVE
+          - DELIVERY
+          - TRADE
+        scheduled_start:
+          type: string
+          format: date-time
+          description: Requested start time.
+        requested_duration_minutes:
+          type: integer
+          description: Optional. If omitted, duration derived from selected ops +
+            dealer rules.
+        additional_comments:
+          type: string
+        customer:
+          $ref: '#/components/schemas/AppointmentCustomerSnapshot'
+        vehicle:
+          $ref: '#/components/schemas/VehicleIdentifier'
+        advisor_id:
+          type: string
+          description: Optional advisor preference/reference.
+        transport:
+          $ref: '#/components/schemas/AppointmentTransportSelection'
+        pick_up_address:
+          $ref: '#/components/schemas/AddressReference'
+        drop_off_address:
+          $ref: '#/components/schemas/AddressReference'
+        client_request_id:
+          type: string
+          format: uuid
+          description: Idempotency/correlation key supplied by client.
+        dealer_key:
+          type: string
+          description: Dealer natural key (preferred cross-context identifier). Matches
+            Dealer.dealer_key.
+        dealer_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Reference to dealer Party (Parties context).
+        customer_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Reference to customer Party (Parties context).
+        advisor_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Reference to advisor Party (Parties context).
+        party_key:
+          type: string
+          description: 'Convenience: customer party_key (if known).'
+        labor_operation_selections:
+          type: array
+          description: Selected labor operations for SERVICE appointments. Prefer
+            this over legacy service_operations.
+          items:
+            $ref: '#/components/schemas/AppointmentLaborOperationSelection'
+    AppointmentUpdate:
+      type: object
+      description: Update Appointment (aligned to model naming).
+      properties:
+        scheduled_start:
+          type: string
+          format: date-time
+        requested_duration_minutes:
+          type: integer
+        additional_comments:
+          type: string
+        advisor_id:
+          type: string
+        transport:
+          $ref: '#/components/schemas/AppointmentTransportSelection'
+        pick_up_address:
+          $ref: '#/components/schemas/AddressReference'
+        drop_off_address:
+          $ref: '#/components/schemas/AddressReference'
+        customer:
+          $ref: '#/components/schemas/AppointmentCustomerSnapshot'
+        client_request_id:
+          type: string
+          format: uuid
+        dealer_key:
+          type: string
+          description: Dealer natural key (preferred cross-context identifier). Matches
+            Dealer.dealer_key.
+        dealer_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Reference to dealer Party (Parties context).
+        customer_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Reference to customer Party (Parties context).
+        advisor_party_reference:
+          allOf:
+          - $ref: '#/components/schemas/PartyReference'
+          - description: Reference to advisor Party (Parties context).
+        party_key:
+          type: string
+          description: 'Convenience: customer party_key (if known).'
+        labor_operation_selections:
+          type: array
+          description: Selected labor operations for SERVICE appointments. Prefer
+            this over legacy service_operations.
+          items:
+            $ref: '#/components/schemas/AppointmentLaborOperationSelection'
+    AppointmentResponse:
+      type: object
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AppointmentView'
+    AppointmentListResponse:
+      type: object
+      required:
+      - data
+      - has_more
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppointmentView'
+        next_cursor:
+          type: string
+          description: Opaque cursor for the next page. Null if no more results.
+        has_more:
+          type: boolean
+          description: Whether additional results exist beyond this page.
+          example: false
+        total_count:
+          type: integer
+          description: Total entities matching the query (optional, may be expensive).
+    EventMessage:
+      type: object
+      properties:
+        event_message_key:
+          type: string
+          description: A unique key for the eventMessage record...
+          example: ' c651e0aa'
+        event_message_id:
+          type: string
+          description: The unique ID for the eventMessage.
+          readOnly: true
+          example: ' 6eab4d6a'
+        event_actor_key:
+          type: string
+          description: The ID of the actor for the event.
+          example: ' 258c9168'
+        event_actor_name:
+          type: string
+          description: The name of the actor for the event.
+          example: ' ca3f0ef6'
+        event_actor_role_type:
+          $ref: '#/components/schemas/RoleTypes'
+        event_content:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          items:
+            type: string
+        event_date_time:
+          type: string
+          description: The date and time of the event.
+          format: date-time
+          example: 2026-01-14 12:00:00+00:00
+        event_message_group:
+          type: string
+          description: The group to which the eventMessage belo...
+          example: ' f56036da'
+        event_message_action:
+          $ref: '#/components/schemas/Memo'
+        event_message_desc:
+          type: string
+          description: A description for the eventMessage.
+          example: ' 869eb5ab'
+        event_message_type:
+          $ref: '#/components/schemas/EventMessage'
+        event_message_name:
+          type: string
+          description: The name of the eventMessage.
+          example: ' c9e17f23'
+        event_message_code:
+          type: string
+          description: The code for the eventMessage.
+          example: ' 0034fa18'
+        event_message_value:
+          type: string
+          description: The value of the eventMessage.
+          example: ' 794d9a50'
+        internal_indicator:
+          type: boolean
+          description: An indicator for whether the eventMessag...
+          example: true
+      description: event.message.desc
+    VehicleIdentifier:
+      type: object
+      properties:
+        vehicle_identifier_key:
+          type: string
+          description: A unique key for the vehicle identifier.
+          readOnly: true
+          example: ' 398dbee2'
+        vehicle_identifier_id:
+          type: string
+          description: The unique ID for the vehicle identifier...
+          readOnly: true
+          example: ' a1778b10'
+        odometer:
+          $ref: '#/components/schemas/MetricValue'
+        vehicle_key:
+          type: string
+          description: The unique KEY of the associated vehicle...
+          example: ' ef1f7c7a'
+        stock_number:
+          type: string
+          description: The dealer's internal stock number for t...
+          example: ' 0c3219ff'
+        identifiers:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          readOnly: true
+          items:
+            $ref: '#/components/schemas/Identifier'
+        license:
+          $ref: '#/components/schemas/VehicleLicense'
+        make:
+          type: string
+          description: The manufacturer or make of the vehicle.
+          example: ' 5b39f448'
+        model:
+          type: string
+          description: The model name of the vehicle.
+          example: ' f7c5b595'
+        trim:
+          type: string
+          description: The model name of the vehicle.
+          example: ' cad1eb0c'
+        manufacturer_model_code:
+          type: string
+          description: The manufacturer's model code.
+          example: ' 0808babb'
+        manufacturer_name:
+          type: string
+          description: The name of the manufacturer.
+          example: ' 5c856e90'
+        model_code:
+          type: string
+          description: The model code.
+          example: ' d7893f12'
+        model_description:
+          type: string
+          description: A description of the model.
+          example: ' 1d58c732'
+        model_year:
+          type: string
+          description: The model year of the vehicle.
+          example: ' 7e825dc0'
+        vin:
+          type: string
+          description: The Vehicle Identification Number.
+          example: ' fecb5c33'
+        nicknames:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          items:
+            type: string
+        tags:
+          $ref: '#/components/schemas/Codes'
+      description: vehicle.identifier.desc
+    VehicleIdentifierCreate:
+      required:
+      - vehicle_identifier_key
+      type: object
+      description: VehicleIdentifier Create for Post
+      allOf:
+      - $ref: '#/components/schemas/VehicleIdentifier'
+    VehicleIdentifierUpdate:
+      type: object
+      properties:
+        odometer:
+          $ref: '#/components/schemas/MetricValue'
+        manufacturer_model_code:
+          type: string
+          description: The manufacturer's model code.
+          example: ' 0808babb'
+        identifiers:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          readOnly: true
+          items:
+            $ref: '#/components/schemas/Identifier'
+        model_year:
+          type: string
+          description: The model year of the vehicle.
+          example: ' 7e825dc0'
+        manufacturer_name:
+          type: string
+          description: The name of the manufacturer.
+          example: ' 5c856e90'
+        tags:
+          $ref: '#/components/schemas/Codes'
+        stock_number:
+          type: string
+          description: The dealer's internal stock number for t...
+          example: ' 0c3219ff'
+        license:
+          $ref: '#/components/schemas/VehicleLicense'
+        model_code:
+          type: string
+          description: The model code.
+          example: ' d7893f12'
+        trim:
+          type: string
+          description: The model name of the vehicle.
+          example: ' cad1eb0c'
+        model_description:
+          type: string
+          description: A description of the model.
+          example: ' 1d58c732'
+        model:
+          type: string
+          description: The model name of the vehicle.
+          example: ' f7c5b595'
+        vin:
+          type: string
+          description: The Vehicle Identification Number.
+          example: ' fecb5c33'
+        nicknames:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          items:
+            type: string
+        make:
+          type: string
+          description: The manufacturer or make of the vehicle.
+          example: ' 5b39f448'
+      description: VehicleIdentifier Update for Patch and Put
+    VehicleLicense:
+      type: object
+      properties:
+        vehicle_license_key:
+          type: string
+          description: The unique key for the vehicle license r...
+          example: ' e823fe76'
+        plate_number:
+          type: string
+          description: The license plate number of the vehicle.
+          example: ' 156c4ce8'
+        jurisdiction_name:
+          type: string
+          description: The name of the jurisdiction that issued...
+          example: ' 754a7364'
+        country_code:
+          type: string
+          description: The country code of the issuing jurisdic...
+          example: ' bd2eb9a9'
+        effective_period:
+          $ref: '#/components/schemas/EffectivePeriod'
+      description: vehicle.license.desc
+    MetricValue:
+      type: object
+      properties:
+        metric_value_key:
+          type: string
+          description: The unique key for the metric value.
+          example: ' 4ebe552d'
+        value:
+          type: string
+          description: The value of the metric.
+          example: ' f0c734da'
+        uom:
+          $ref: '#/components/schemas/NarrativeUomTypes'
+        locales:
+          $ref: '#/components/schemas/Codes'
+      description: metric.value.desc
+    NarrativeUomTypes:
+      type: string
+      description: types of narrative uoms.
+      enum:
+      - BAR
+      - KPA
+      - PSI
+      - OZ
+      - LB
+      - KG
+      - GRAMS
+      - TONS
+      - LITER
+      - GALLON
+      - FLUID_OUNCE
+      - CUBIC_METER
+      - KM
+      - MILES
+      - MI
+      - INCH
+      - FEET
+      - YARD
+      - FATHOM
+      - NAUTICAL
+      - METER
+      - CENTIMETER
+      - MILLIMETER
+      - DURATION
+      - SECONDS
+      - MINUTES
+      - HOURS
+      - DAYS
+      - WEEKS
+      - DAY_OF_MONTH
+      - BI_WEEKS
+      - SEMI_MONTHS
+      - MONTHS
+      - QUARTERS
+      - SEMI_YEARS
+      - YEARS
+      - MULTI_YEARS
+      - DATE_TIME
+      - DATE
+      - TIME
+      - CELSIUS
+      - FAHRENHEIT
+      - KELVIN
+      - RANKINE
+      - VOLT
+      - AMPERE
+      - OHM
+      - WATT
+      - KILOWATT_HOUR
+      - RPM
+      - G_FORCE
+      - DEGREES
+      - OCCURRENCE
+      - GROUP
+      - CODE
+      - CURRENCY
+      - POINTS
+      - CUSTOM
+      - UNLIMITED
+      - NONE
+      - LABEL
+      - PERCENT
+      - DESC
+      - TEXT
+      - KEY
+      - PROTECTED_TEXT
+      - BINARY
+      - STRING
+      - NUMBER
+      - INTEGER
+      - BOOLEAN
+      - ARRAY
+      - OBJECT
+      - FLOAT
+      - DOUBLE
+      - INT32
+      - INT64
+      - OTHER
+    PartyReferenceCreate:
+      required:
+      - party_reference_key
+      type: object
+      description: PartyReference Create for Post
+      allOf:
+      - $ref: '#/components/schemas/PartyReference'
+    PartyReferenceUpdate:
+      type: object
+      properties:
+        duration:
+          $ref: '#/components/schemas/EffectivePeriod'
+        system_codes:
+          $ref: '#/components/schemas/Codes'
+        rule_codes:
+          $ref: '#/components/schemas/Codes'
+        context:
+          type: string
+          description: Context or domain of the identifier
+          example: ' 82d4436c'
+        party_reference_type:
+          type: string
+          description: Unique identifier value
+          example: ' 8f83ec90'
+        party_relationship_types:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          items:
+            $ref: '#/components/schemas/PartyRelationshipTypes'
+        occurrence_date_time:
+          type: string
+          description: The date and time the event occurred.
+          format: date-time
+          example: '2026-01-14T12:00:00Z'
+        party:
+          $ref: '#/components/schemas/Identifier'
+      description: PartyReference Update for Patch and Put
+    PartyReferences:
+      type: array
+      items:
+        $ref: '#/components/schemas/PartyReference'
+    AddressReference:
+      type: object
+      properties:
+        address_reference_key:
+          type: string
+          description: A unique key for the address reference.
+          example: ' db1699d2'
+        address_reference_value:
+          type: string
+          description: The unique value of the address referenc...
+          example: ' 194d6952'
+        address_types:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          items:
+            $ref: '#/components/schemas/AddressTypes'
+        address_line1:
+          type: string
+          description: Primary address line (Street, PO Box, et...
+          example: ' 4ca213dd'
+        address_line2:
+          type: string
+          description: Secondary address line (Suite, Apt, etc)...
+          example: ' 832221d6'
+        address_line3:
+          type: string
+          description: Secondary address line (Suite, Apt, etc)...
+          example: ' 19644dad'
+        address_line4:
+          type: string
+          description: Secondary address line (Suite, Apt, etc)...
+          example: ' 65ff0de6'
+        address_line5:
+          type: string
+          description: Secondary address line (Suite, Apt, etc)...
+          example: ' d23425bb'
+        city:
+          type: string
+          description: Name of the city.
+          example: ' 4cdf3bed'
+        country_code:
+          type: string
+          description: Full name of the country.
+          example: ' 6e3aa488'
+        district:
+          type: string
+          description: Name of the district.
+          example: ' 0b14b38a'
+        label:
+          maxLength: 50
+          type: string
+          description: Label or display name for the address.
+          example: ' 37fedbbc'
+        postal_code:
+          maxLength: 20
+          minLength: 3
+          type: string
+          description: Primary postal or ZIP code.
+          example: ' 4220da13'
+        state_province:
+          maxLength: 50
+          type: string
+          description: State or equivalent subdivision.
+          example: ' b6b76d00'
+      description: address.reference.desc
+    AddressReferenceCreate:
+      required:
+      - address_reference_key
+      type: object
+      description: AddressReference Create for Post
+      allOf:
+      - $ref: '#/components/schemas/AddressReference'
+    AddressReferenceUpdate:
+      type: object
+      properties:
+        address_reference_value:
+          type: string
+          description: The unique value of the address referenc...
+          example: ' 194d6952'
+        city:
+          type: string
+          description: Name of the city.
+          example: ' 4cdf3bed'
+        state_province:
+          maxLength: 50
+          type: string
+          description: State or equivalent subdivision.
+          example: ' b6b76d00'
+        label:
+          maxLength: 50
+          type: string
+          description: Label or display name for the address.
+          example: ' 37fedbbc'
+        address_types:
+          maxItems: 255
+          minItems: 1
+          uniqueItems: true
+          type: array
+          items:
+            $ref: '#/components/schemas/AddressTypes'
+        address_line5:
+          type: string
+          description: Secondary address line (Suite, Apt, etc)...
+          example: ' d23425bb'
+        country_code:
+          type: string
+          description: Full name of the country.
+          example: ' 6e3aa488'
+        address_line4:
+          type: string
+          description: Secondary address line (Suite, Apt, etc)...
+          example: ' 65ff0de6'
+        address_line3:
+          type: string
+          description: Secondary address line (Suite, Apt, etc)...
+          example: ' 19644dad'
+        address_line2:
+          type: string
+          description: Secondary address line (Suite, Apt, etc)...
+          example: ' 832221d6'
+        address_line1:
+          type: string
+          description: Primary address line (Street, PO Box, et...
+          example: ' 4ca213dd'
+        district:
+          type: string
+          description: Name of the district.
+          example: ' 0b14b38a'
+        postal_code:
+          maxLength: 20
+          minLength: 3
+          type: string
+          description: Primary postal or ZIP code.
+          example: ' 4220da13'
+      description: AddressReference Update for Patch and Put
+    AddressReferences:
+      type: array
+      items:
+        $ref: '#/components/schemas/AddressReference'
+    AddressTypes:
+      type: string
+      description: types of address.
+      enum:
+      - BILLING
+      - SHIPPING
+      - MAILING
+      - POSTAL
+      - HOME
+      - RESIDENCE
+      - WORK
+      - BUSINESS
+      - LEGAL
+      - SERVICE
+      - DEALER
+      - CONTRACT
+      - AR_ADDRESS
+      - RECIPIENT
+      - DELIVERY
+      - DESTINATION
+      - ORIGINAL
+      - CURRENT
+      - PREVIOUS
+      - TEMPORARY
+      - VACATION
+      - GARAGE
+      - EMERGENCY
+      - REBATE
+      - SERVICE_CONTRACT
+      - INSURANCE
+      - PRODUCT
+      - ARCHIVE
+      - OTHER

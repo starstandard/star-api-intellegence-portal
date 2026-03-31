@@ -510,15 +510,22 @@ app.post('/api/chat', async (req, res) => {
         });
       }
 
-      return res.json({
-        request_id: id,
-        answer: 'Available endpoints:',
-        sections: toSections('Available endpoints:'),
-        endpoint_cards: getOperations(domain),
-        source: 'openapi',
-        fallback_used: false,
-        latency_ms: now() - start
-      });
+    return res.json({
+      request_id: id,
+      answer: 'Available endpoints:',
+      sections: toSections('Available endpoints:'),
+      endpoint_cards: getOperations(domain).map((op) => ({
+        title: `${op.method} ${op.path}`,
+        description: op.summary || op.description || 'OpenAPI endpoint',
+        method: op.method,
+        path: op.path,
+        summary: op.summary || '',
+        raw: op
+      })),
+      source: 'openapi',
+      fallback_used: false,
+      latency_ms: now() - start
+    });
     }
 
     if (

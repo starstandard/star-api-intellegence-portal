@@ -46,6 +46,7 @@ function structuredSectionsFromNumberedText(text) {
 
   for (const raw of lines) {
     const line = raw.trim();
+
     if (!line) {
       if (current) current.body.push('');
       continue;
@@ -192,6 +193,44 @@ function normalizeEndpointPrompt(message = '') {
   return match ? match[0] : null;
 }
 
+function getCapabilityCards(domain) {
+  if (domain === 'multi-point-inspection') {
+    return [
+      {
+        title: 'Inspection overview',
+        description: 'Understand the role of the Multi-Point Inspection API in dealership workflows.'
+      },
+      {
+        title: 'Inspection workflow',
+        description: 'Follow the lifecycle from inspection creation through findings and recommendations.'
+      },
+      {
+        title: 'Customer approval',
+        description: 'Review how recommendations and decisions support downstream service execution.'
+      }
+    ];
+  }
+
+  if (domain === 'appointment') {
+    return [
+      {
+        title: 'Appointment overview',
+        description: 'Understand the role of the Appointment API in service scheduling and intake.'
+      },
+      {
+        title: 'Scheduling workflow',
+        description: 'Follow the lifecycle from appointment creation to service-lane preparation.'
+      },
+      {
+        title: 'Requested service context',
+        description: 'Review how requested service details support dealership coordination.'
+      }
+    ];
+  }
+
+  return [];
+}
+
 /* -------------------------
  * DEMO MODE CONTENT
  * ------------------------- */
@@ -283,7 +322,7 @@ app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
     service: 'star-ai-intelligence-portal',
-    version: 'demo-mode-v1'
+    version: 'demo-mode-v2'
   });
 });
 
@@ -293,7 +332,7 @@ app.get('/health', (_req, res) => {
 
 app.get('/api/version', (_req, res) => {
   res.json({
-    version: 'demo-mode-v1',
+    version: 'demo-mode-v2',
     domains: {
       appointment: {
         openapi_loaded: !!REGISTRY.appointment,
@@ -315,11 +354,29 @@ app.get('/api/openapi-index', (req, res) => {
     return res.status(404).json({ error: 'Spec not found' });
   }
 
+  const operations = getOperations(domain);
+  const schemaCards = Object.entries(getSchemas(domain)).map(([name, schema]) => ({
+    title: name,
+    description: schema.description || 'OpenAPI schema'
+  }));
+  const capabilityCards = getCapabilityCards(domain);
+
   return res.json({
     domain,
     title: spec.info?.title || '',
     version: spec.info?.version || '',
-    operations: getOperations(domain)
+    operations,
+    endpoint_cards: operations.map((op) => ({
+      title: `${op.method} ${op.path}`,
+      description: op.summary || op.description || 'OpenAPI endpoint',
+      method: op.method,
+      path: op.path,
+      summary: op.summary || ''
+    })),
+    schema_cards: schemaCards,
+    schemas: schemaCards,
+    capability_cards: capabilityCards,
+    capabilities: capabilityCards
   });
 });
 
@@ -432,6 +489,18 @@ app.post('/api/chat', async (req, res) => {
           description: schema.description || 'OpenAPI schema'
         })),
         source: 'openapi',
+        fallback_used: false,
+        latency_ms: now() - start
+      });
+    }
+
+    if (lower.includes('capabilities') || lower.includes('capability')) {
+      return res.json({
+        request_id: id,
+        answer: 'Capabilities available:',
+        sections: toSections('Capabilities available:'),
+        capability_cards: getCapabilityCards(domain),
+        source: 'deterministic',
         fallback_used: false,
         latency_ms: now() - start
       });
@@ -577,5 +646,5 @@ app.post('/api/chat/stream', async (req, res) => {
 /* ------------------------- */
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Demo Mode V1 running on ${PORT}`);
+  console.log(`🚀 Demo Mode V2 running on ${PORT}`);
 });

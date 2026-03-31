@@ -193,20 +193,156 @@ function normalizeEndpointPrompt(message = '') {
   return match ? match[0] : null;
 }
 
+function schemaNameFromRef(ref = '') {
+  const match = String(ref).match(/#\/components\/schemas\/(.+)$/);
+  return match?.[1] || null;
+}
+
+function collectSchemaRefs(value, acc = new Set()) {
+  if (!value || typeof value !== 'object') return acc;
+
+  if (typeof value.$ref === 'string') {
+    const name = schemaNameFromRef(value.$ref);
+    if (name) acc.add(name);
+  }
+
+  for (const child of Object.values(value)) {
+    if (child && typeof child === 'object') {
+      collectSchemaRefs(child, acc);
+    }
+  }
+
+  return acc;
+}
+
+function buildExampleFromSchema(schema, schemas, depth = 0) {
+  if (!schema || depth > 4) return null;
+
+  if (schema.example !== undefined) return schema.example;
+
+  if (schema.$ref) {
+    const name = schemaNameFromRef(schema.$ref);
+    const target = schemas[name];
+    return target ? buildExampleFromSchema(target, schemas, depth + 1) : null;
+  }
+
+  if (schema.enum?.length) return schema.enum[0];
+
+  if (schema.type === 'object' || schema.properties) {
+    const out = {};
+    for (const [key, value] of Object.entries(schema.properties || {})) {
+      const built = buildExampleFromSchema(value, schemas, depth + 1);
+      out[key] = built !== null ? built : '<value>';
+    }
+    return out;
+  }
+
+  if (schema.type === 'array') {
+    const item = buildExampleFromSchema(schema.items, schemas, depth + 1);
+    return [item !== null ? item : '<item>'];
+  }
+
+  switch (schema.type) {
+    case 'string':
+      if (schema.format === 'date-time') return '2026-03-31T12:00:00Z';
+      if (schema.format === 'date') return '2026-03-31';
+      return '<string>';
+    case 'integer':
+    case 'number':
+      return 0;
+    case 'boolean':
+      return true;
+    default:
+      return null;
+  }
+}
+
+function firstJsonContent(content) {
+  if (!content || typeof content !== 'object') return null;
+  return (
+    content['application/json'] ||
+    content['application/*+json'] ||
+    Object.values(content)[0] ||
+    null
+  );
+}
+
+function extractEndpointDetail(domain, method, routePath) {
+  const op = getOperationByMethodAndPath(domain, method, routePath);
+  if (!op) return null;
+
+  const schemas = getSchemas(domain);
+  const parameters = op.parameters || [];
+
+  const requestContent = firstJsonContent(op.requestBody?.content);
+  const responses = op.responses || {};
+  const preferredResponse =
+    responses['200'] ||
+    responses['201'] ||
+    responses['202'] ||
+    Object.values(responses)[0];
+
+  const responseContent = firstJsonContent(preferredResponse?.content);
+
+  const relatedNames = new Set();
+  collectSchemaRefs(op, relatedNames);
+  if (requestContent?.schema) collectSchemaRefs(requestContent.schema, relatedNames);
+  if (responseContent?.schema) collectSchemaRefs(responseContent.schema, relatedNames);
+
+  const relatedSchemaCards = Array.from(relatedNames).map((name) => ({
+    title: name,
+    description: schemas[name]?.description || 'Related OpenAPI schema',
+    prompt: `Show schema ${name} in the ${domain} API`
+  }));
+
+  let requestExample = null;
+  if (requestContent?.example !== undefined) {
+    requestExample = requestContent.example;
+  } else if (requestContent?.examples && typeof requestContent.examples === 'object') {
+    const first = Object.values(requestContent.examples)[0];
+    requestExample = first?.value ?? null;
+  } else if (requestContent?.schema) {
+    requestExample = buildExampleFromSchema(requestContent.schema, schemas);
+  }
+
+  let responseExample = null;
+  if (responseContent?.example !== undefined) {
+    responseExample = responseContent.example;
+  } else if (responseContent?.examples && typeof responseContent.examples === 'object') {
+    const first = Object.values(responseContent.examples)[0];
+    responseExample = first?.value ?? null;
+  } else if (responseContent?.schema) {
+    responseExample = buildExampleFromSchema(responseContent.schema, schemas);
+  }
+
+  return {
+    summary: op.summary || '',
+    description: op.description || '',
+    endpoint_parameters: parameters,
+    related_schema_cards: relatedSchemaCards,
+    request_example: requestExample,
+    response_example: responseExample,
+    raw_openapi: op
+  };
+}
+
 function getCapabilityCards(domain) {
   if (domain === 'multi-point-inspection') {
     return [
       {
         title: 'Inspection overview',
-        description: 'Understand the role of the Multi-Point Inspection API in dealership workflows.'
+        description: 'Understand the role of the Multi-Point Inspection API in dealership workflows.',
+        prompt: 'Give me a rich description of the Multi-Point Inspection API'
       },
       {
         title: 'Inspection workflow',
-        description: 'Follow the lifecycle from inspection creation through findings and recommendations.'
+        description: 'Follow the lifecycle from inspection creation through findings and recommendations.',
+        prompt: 'Explain how to start the inspection workflow in the Multi-Point Inspection API'
       },
       {
         title: 'Customer approval',
-        description: 'Review how recommendations and decisions support downstream service execution.'
+        description: 'Review how recommendations and decisions support downstream service execution.',
+        prompt: 'Explain customer approval in the Multi-Point Inspection API'
       }
     ];
   }
@@ -215,15 +351,18 @@ function getCapabilityCards(domain) {
     return [
       {
         title: 'Appointment overview',
-        description: 'Understand the role of the Appointment API in service scheduling and intake.'
+        description: 'Understand the role of the Appointment API in service scheduling and intake.',
+        prompt: 'Give me a rich description of the Appointment API'
       },
       {
         title: 'Scheduling workflow',
-        description: 'Follow the lifecycle from appointment creation to service-lane preparation.'
+        description: 'Follow the lifecycle from appointment creation to service-lane preparation.',
+        prompt: 'Explain the appointment workflow in the Appointment API'
       },
       {
         title: 'Requested service context',
-        description: 'Review how requested service details support dealership coordination.'
+        description: 'Review how requested service details support dealership coordination.',
+        prompt: 'Explain requested service context in the Appointment API'
       }
     ];
   }
@@ -287,6 +426,38 @@ It helps the dealership coordinate service readiness and customer expectations.`
   return null;
 }
 
+function getCapabilityAnswer(domain, message) {
+  const lower = String(message).toLowerCase();
+
+  if (domain === 'multi-point-inspection') {
+    if (lower.includes('customer approval')) {
+      return `1. Direct answer
+Customer approval in the Multi-Point Inspection API represents the decision point after findings and recommendations are reviewed.
+
+2. Key details
+It connects inspection outputs to accepted or declined service actions and helps advisors move from technical findings to customer decisions.
+
+3. Why it matters
+It is the workflow bridge between inspection intelligence and downstream execution.`;
+    }
+  }
+
+  if (domain === 'appointment') {
+    if (lower.includes('requested service context')) {
+      return `1. Direct answer
+Requested service context in the Appointment API captures what work the customer wants performed.
+
+2. Key details
+It helps the dealership align scheduling, intake, and preparation before the visit begins.
+
+3. Why it matters
+It gives downstream workflows the service intent needed for operational readiness.`;
+    }
+  }
+
+  return null;
+}
+
 function getBuiltInEndpointDetail(endpoint) {
   if (!endpoint) return null;
   const key = endpoint.toLowerCase();
@@ -322,7 +493,7 @@ app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
     service: 'star-ai-intelligence-portal',
-    version: 'demo-mode-v2'
+    version: 'demo-mode-v3'
   });
 });
 
@@ -332,7 +503,7 @@ app.get('/health', (_req, res) => {
 
 app.get('/api/version', (_req, res) => {
   res.json({
-    version: 'demo-mode-v2',
+    version: 'demo-mode-v3',
     domains: {
       appointment: {
         openapi_loaded: !!REGISTRY.appointment,
@@ -357,7 +528,8 @@ app.get('/api/openapi-index', (req, res) => {
   const operations = getOperations(domain);
   const schemaCards = Object.entries(getSchemas(domain)).map(([name, schema]) => ({
     title: name,
-    description: schema.description || 'OpenAPI schema'
+    description: schema.description || 'OpenAPI schema',
+    prompt: `Show schema ${name} in the ${domain} API`
   }));
   const capabilityCards = getCapabilityCards(domain);
 
@@ -369,6 +541,7 @@ app.get('/api/openapi-index', (req, res) => {
     endpoint_cards: operations.map((op) => ({
       title: `${op.method} ${op.path}`,
       description: op.summary || op.description || 'OpenAPI endpoint',
+      prompt: `Explain ${op.method} ${op.path} for the ${domain} API`,
       method: op.method,
       path: op.path,
       summary: op.summary || ''
@@ -406,6 +579,8 @@ app.get('/api/openapi-endpoint', (req, res) => {
     return res.status(404).json({ error: 'Endpoint not found' });
   }
 
+  const detail = extractEndpointDetail(domain, method, routePath);
+
   return res.json({
     domain,
     method,
@@ -414,7 +589,12 @@ app.get('/api/openapi-endpoint', (req, res) => {
     description: op.description || '',
     parameters: op.parameters || [],
     requestBody: op.requestBody || null,
-    responses: op.responses || {}
+    responses: op.responses || {},
+    endpoint_parameters: detail?.endpoint_parameters || [],
+    related_schema_cards: detail?.related_schema_cards || [],
+    request_example: detail?.request_example ?? null,
+    response_example: detail?.response_example ?? null,
+    raw_openapi: detail?.raw_openapi || op
   });
 });
 
@@ -430,6 +610,7 @@ app.post('/api/chat', async (req, res) => {
     const message = String(req.body.message || '');
     const domain = detectDomain(message);
     const lower = message.toLowerCase();
+    const endpointPrompt = normalizeEndpointPrompt(message);
 
     if (!domain) {
       const answer = 'Please specify a domain like Appointment or Multi-Point Inspection.';
@@ -478,6 +659,19 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
+    if (lower.includes('capabilities') || lower.includes('capability') || lower.includes('customer approval')) {
+      const answer = getCapabilityAnswer(domain, message) || 'Capabilities available:';
+      return res.json({
+        request_id: id,
+        answer,
+        sections: structuredSectionsFromNumberedText(answer),
+        capability_cards: getCapabilityCards(domain),
+        source: 'deterministic',
+        fallback_used: false,
+        latency_ms: now() - start
+      });
+    }
+
     if (lower.includes('schema')) {
       const schemas = getSchemas(domain);
       return res.json({
@@ -486,7 +680,8 @@ app.post('/api/chat', async (req, res) => {
         sections: toSections('Schemas available:'),
         schema_cards: Object.entries(schemas).map(([name, schema]) => ({
           title: name,
-          description: schema.description || 'OpenAPI schema'
+          description: schema.description || 'OpenAPI schema',
+          prompt: `Show schema ${name} in the ${domain} API`
         })),
         source: 'openapi',
         fallback_used: false,
@@ -494,32 +689,40 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-    if (lower.includes('capabilities') || lower.includes('capability')) {
-      return res.json({
-        request_id: id,
-        answer: 'Capabilities available:',
-        sections: toSections('Capabilities available:'),
-        capability_cards: getCapabilityCards(domain),
-        source: 'deterministic',
-        fallback_used: false,
-        latency_ms: now() - start
-      });
-    }
+    if (endpointPrompt) {
+      const parts = endpointPrompt.split(/\s+/);
+      const method = parts[0];
+      const routePath = parts[1];
+      const detail = extractEndpointDetail(domain, method, routePath);
 
-    if (lower.includes('endpoint') || normalizeEndpointPrompt(message)) {
-      const built = getBuiltInEndpointDetail(message);
-      if (built) {
+      if (detail) {
+        const answer = `1. Direct answer
+${method} ${routePath} is a defined endpoint in the ${domain} API.
+
+2. Key endpoint details
+${detail.summary || detail.description || 'This endpoint is part of the API surface.'}
+
+3. Why it matters
+It provides a direct integration point into the ${domain} workflow.`;
+
         return res.json({
           request_id: id,
-          answer: built.answer,
-          sections: structuredSectionsFromNumberedText(built.answer),
-          endpoint_parameters: built.parameters,
-          source: 'deterministic',
+          answer,
+          sections: structuredSectionsFromNumberedText(answer),
+          endpoint_title: `${method} ${routePath}`,
+          endpoint_parameters: detail.endpoint_parameters,
+          related_schema_cards: detail.related_schema_cards,
+          request_example: detail.request_example,
+          response_example: detail.response_example,
+          raw_openapi: detail.raw_openapi,
+          source: 'openapi',
           fallback_used: false,
           latency_ms: now() - start
         });
       }
+    }
 
+    if (lower.includes('endpoint')) {
       return res.json({
         request_id: id,
         answer: 'Available endpoints:',
@@ -527,6 +730,7 @@ app.post('/api/chat', async (req, res) => {
         endpoint_cards: getOperations(domain).map((op) => ({
           title: `${op.method} ${op.path}`,
           description: op.summary || op.description || 'OpenAPI endpoint',
+          prompt: `Explain ${op.method} ${op.path} for the ${domain} API`,
           method: op.method,
           path: op.path,
           summary: op.summary || '',
@@ -646,5 +850,5 @@ app.post('/api/chat/stream', async (req, res) => {
 /* ------------------------- */
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Demo Mode V2 running on ${PORT}`);
+  console.log(`🚀 Demo Mode V3 running on ${PORT}`);
 });

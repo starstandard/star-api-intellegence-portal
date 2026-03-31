@@ -59,14 +59,9 @@ function structuredSectionsFromNumberedText(text) {
           body: current.body.join('\n').trim()
         });
       }
-      current = {
-        title: match[2],
-        body: []
-      };
+      current = { title: match[2], body: [] };
     } else {
-      if (!current) {
-        current = { title: 'Direct answer', body: [] };
-      }
+      if (!current) current = { title: 'Direct answer', body: [] };
       current.body.push(line);
     }
   }
@@ -94,7 +89,7 @@ async function withTimeout(promise, ms, label = 'Operation') {
   }
 }
 
-async function openaiCall(input, retries = 2) {
+async function openaiCall(input, retries = 1) {
   if (!client) {
     throw new Error('OpenAI client is not configured');
   }
@@ -106,12 +101,12 @@ async function openaiCall(input, retries = 2) {
           model: MODEL,
           input
         }),
-        30000,
+        20000,
         'OpenAI answer generation'
       );
     } catch (error) {
       if (i === retries) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
@@ -198,109 +193,56 @@ function normalizeEndpointPrompt(message = '') {
 }
 
 /* -------------------------
- * DETERMINISTIC CONTENT
+ * DEMO MODE CONTENT
  * ------------------------- */
 
-function deterministicWorkflowAnswer(domain, audience = 'business') {
-  if (domain !== 'multi-point-inspection') return null;
-
-  if (audience === 'architecture') {
+function getOverview(domain) {
+  if (domain === 'multi-point-inspection') {
     return `1. Direct answer
-The inspection workflow begins when an Inspection is established as the core domain object tied to a service event.
+The Multi-Point Inspection API supports structured vehicle inspections in dealership service operations.
 
-2. Key details
-That inspection becomes the anchor for findings, media, recommendations, and approval-related outcomes across the workflow.
+2. Core responsibilities
+It manages inspections, findings, media, recommendations, and approval-related outcomes.
 
 3. Why it matters
-It creates a stable boundary between upstream service intake and downstream execution decisions.`;
+It connects technician observations to advisor communication and downstream service execution.`;
   }
 
-  if (audience === 'technical') {
+  if (domain === 'appointment') {
     return `1. Direct answer
-The inspection workflow starts when the system creates an Inspection resource for a service visit or repair context.
+The Appointment API supports dealership service scheduling and intake coordination.
 
-2. Key details
-Technicians then populate findings, attach media, and generate recommendation-related data that advisors can review.
+2. Core responsibilities
+It manages appointments, requested service context, timing, and visit preparation.
 
 3. Why it matters
-This is the main lifecycle path that drives retrieval, update, and customer-decision flows in the API.`;
+It provides the upstream service workflow context needed before inspection and repair activity begins.`;
   }
 
-  return `1. Direct answer
+  return null;
+}
+
+function getWorkflowAnswer(domain) {
+  if (domain === 'multi-point-inspection') {
+    return `1. Direct answer
 The inspection workflow begins by creating an Inspection tied to a vehicle service visit or repair order.
 
 2. Key details
 Technicians capture findings and media, then advisors review results and recommendations with the customer.
 
 3. Why it matters
-This workflow supports transparency, trust, and downstream service execution.`;
-}
-
-function deterministicOverview(domain, audience = 'business') {
-  if (domain === 'multi-point-inspection') {
-    if (audience === 'architecture') {
-      return `1. Direct answer
-The Multi-Point Inspection API is the inspection and recommendation domain for dealership service workflows.
-
-2. Core responsibilities
-It manages inspections, findings, media, recommendations, and approval-related outcomes while connecting upstream service context to downstream execution decisions.
-
-3. Why it matters
-It transforms inspection data into actionable, customer-facing service intelligence.`;
-    }
-
-    if (audience === 'technical') {
-      return `1. Direct answer
-The Multi-Point Inspection API models inspections, findings, media, recommendations, and customer-decision workflow.
-
-2. Core responsibilities
-It provides the resource structures and operations needed to create, retrieve, and reason about inspection outcomes.
-
-3. Why it matters
-It is the central technical contract for MPI-driven service-lane workflows.`;
-    }
-
-    return `1. Direct answer
-The Multi-Point Inspection API supports structured vehicle inspections in the dealership service lane.
-
-2. Core responsibilities
-It manages inspection creation, findings, technician observations, media, recommendations, and approval-related workflow.
-
-3. Why it matters
-It helps teams explain vehicle condition clearly and move from inspection to approved service work.`;
+This workflow supports transparency, approval decisions, and downstream service execution.`;
   }
 
   if (domain === 'appointment') {
-    if (audience === 'architecture') {
-      return `1. Direct answer
-The Appointment API is the scheduling and intake boundary for dealership service operations.
-
-2. Core responsibilities
-It manages appointment creation, requested service context, timing, and readiness for downstream service workflows.
-
-3. Why it matters
-It provides the upstream coordination layer that later domains depend on.`;
-    }
-
-    if (audience === 'technical') {
-      return `1. Direct answer
-The Appointment API models service scheduling and intake-related appointment data.
-
-2. Core responsibilities
-It represents appointments, requested services, timing context, and retrieval flows for service-lane preparation.
-
-3. Why it matters
-It is the primary technical contract for appointment-driven service workflows.`;
-    }
-
     return `1. Direct answer
-The Appointment API helps dealerships schedule and manage service appointments.
+The appointment workflow begins by creating a service appointment for a customer and vehicle.
 
-2. Core responsibilities
-It captures booking context, requested services, and timing details needed before the visit begins.
+2. Key details
+The appointment captures requested services, timing, and visit context before downstream operational work begins.
 
 3. Why it matters
-It helps prepare the service lane and align customer expectations with dealership operations.`;
+It helps the dealership coordinate service readiness and customer expectations.`;
   }
 
   return null;
@@ -316,10 +258,10 @@ function getBuiltInEndpointDetail(endpoint) {
 GET /inspections/{id}/findings retrieves the findings recorded for a specific inspection.
 
 2. Key endpoint details
-Those findings typically represent technician observations, condition results, notes, and related media or evidence.
+Those findings represent technician observations, condition results, notes, and possibly related media.
 
 3. Why it matters
-This is a core read path for advisor review, customer communication, and recommendation building.`,
+This is a key read path for advisor review, customer communication, and recommendation building.`,
       parameters: [
         { name: 'id', in: 'path', required: true, type: 'string' }
       ]
@@ -330,7 +272,7 @@ This is a core read path for advisor review, customer communication, and recomme
 }
 
 /* -------------------------
- * HEALTH + UI
+ * UI + HEALTH
  * ------------------------- */
 
 app.get('/', (_req, res) => {
@@ -341,7 +283,7 @@ app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
     service: 'star-ai-intelligence-portal',
-    version: 'enterprise-v2'
+    version: 'demo-mode-v1'
   });
 });
 
@@ -351,7 +293,7 @@ app.get('/health', (_req, res) => {
 
 app.get('/api/version', (_req, res) => {
   res.json({
-    version: 'enterprise-v2',
+    version: 'demo-mode-v1',
     domains: {
       appointment: {
         openapi_loaded: !!REGISTRY.appointment,
@@ -429,33 +371,17 @@ app.post('/api/chat', async (req, res) => {
 
   try {
     const message = String(req.body.message || '');
-    const audience = String(req.body.audience || 'business').toLowerCase();
     const domain = detectDomain(message);
     const lower = message.toLowerCase();
 
     if (!domain) {
-      return res.json({
-        request_id: id,
-        answer: 'Please specify a domain like Appointment or Multi-Point Inspection.',
-        sections: toSections('Please specify a domain like Appointment or Multi-Point Inspection.'),
-        source: 'fallback',
-        fallback_used: true,
-        latency_ms: now() - start
-      });
-    }
-
-    if (
-      lower.includes('inspection workflow') ||
-      lower.includes('start the inspection workflow') ||
-      lower.includes('start inspection workflow')
-    ) {
-      const answer = deterministicWorkflowAnswer(domain, audience);
+      const answer = 'Please specify a domain like Appointment or Multi-Point Inspection.';
       return res.json({
         request_id: id,
         answer,
-        sections: structuredSectionsFromNumberedText(answer),
-        source: 'deterministic',
-        fallback_used: false,
+        sections: toSections(answer),
+        source: 'fallback',
+        fallback_used: true,
         latency_ms: now() - start
       });
     }
@@ -467,17 +393,32 @@ app.post('/api/chat', async (req, res) => {
       lower.includes('what is the') ||
       lower.includes('overview')
     ) {
-      const answer = deterministicOverview(domain, audience);
-      if (answer) {
-        return res.json({
-          request_id: id,
-          answer,
-          sections: structuredSectionsFromNumberedText(answer),
-          source: 'deterministic',
-          fallback_used: false,
-          latency_ms: now() - start
-        });
-      }
+      const answer = getOverview(domain);
+      return res.json({
+        request_id: id,
+        answer,
+        sections: structuredSectionsFromNumberedText(answer),
+        source: 'deterministic',
+        fallback_used: false,
+        latency_ms: now() - start
+      });
+    }
+
+    if (
+      lower.includes('workflow') ||
+      lower.includes('start the inspection') ||
+      lower.includes('start inspection') ||
+      lower.includes('start the appointment')
+    ) {
+      const answer = getWorkflowAnswer(domain);
+      return res.json({
+        request_id: id,
+        answer,
+        sections: structuredSectionsFromNumberedText(answer),
+        source: 'deterministic',
+        fallback_used: false,
+        latency_ms: now() - start
+      });
     }
 
     if (lower.includes('schema')) {
@@ -510,22 +451,22 @@ app.post('/api/chat', async (req, res) => {
         });
       }
 
-    return res.json({
-      request_id: id,
-      answer: 'Available endpoints:',
-      sections: toSections('Available endpoints:'),
-      endpoint_cards: getOperations(domain).map((op) => ({
-        title: `${op.method} ${op.path}`,
-        description: op.summary || op.description || 'OpenAPI endpoint',
-        method: op.method,
-        path: op.path,
-        summary: op.summary || '',
-        raw: op
-      })),
-      source: 'openapi',
-      fallback_used: false,
-      latency_ms: now() - start
-    });
+      return res.json({
+        request_id: id,
+        answer: 'Available endpoints:',
+        sections: toSections('Available endpoints:'),
+        endpoint_cards: getOperations(domain).map((op) => ({
+          title: `${op.method} ${op.path}`,
+          description: op.summary || op.description || 'OpenAPI endpoint',
+          method: op.method,
+          path: op.path,
+          summary: op.summary || '',
+          raw: op
+        })),
+        source: 'openapi',
+        fallback_used: false,
+        latency_ms: now() - start
+      });
     }
 
     if (
@@ -559,12 +500,11 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const ai = await openaiCall(
-      `Audience: ${audience}
-Domain: ${domain}
+      `Domain: ${domain}
 User request: ${message}
 
-Explain clearly in STAR automotive API context.
-Return a concise but structured response.`
+Answer clearly in STAR automotive API context.
+Be concise and practical.`
     );
 
     const answer = ai.output_text || 'No response text returned.';
@@ -595,15 +535,19 @@ app.post('/api/chat/stream', async (req, res) => {
   try {
     const message = String(req.body.message || '');
     const domain = detectDomain(message);
+    const lower = message.toLowerCase();
 
     if (
       domain &&
       (
-        message.toLowerCase().includes('inspection workflow') ||
-        message.toLowerCase().includes('start the inspection workflow')
+        lower.includes('workflow') ||
+        lower.includes('overview') ||
+        lower.includes('rich description')
       )
     ) {
-      res.write(deterministicWorkflowAnswer(domain, 'business') || '');
+      const answer =
+        lower.includes('workflow') ? getWorkflowAnswer(domain) : getOverview(domain);
+      res.write(answer || '');
       res.end();
       return;
     }
@@ -633,5 +577,5 @@ app.post('/api/chat/stream', async (req, res) => {
 /* ------------------------- */
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Enterprise V2 running on ${PORT}`);
+  console.log(`🚀 Demo Mode V1 running on ${PORT}`);
 });

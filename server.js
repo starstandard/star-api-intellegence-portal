@@ -255,6 +255,21 @@ app.post('/api/chat/stream', async (req, res) => {
 });
 
 // -------------------------
-app.listen(PORT, () => {
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'star-ai-intelligence-portal'
+  });
+});
+
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'star-ai-intelligence-portal',
+    version: 'enterprise-v1'
+  });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Enterprise V1 running on ${PORT}`);
 });
